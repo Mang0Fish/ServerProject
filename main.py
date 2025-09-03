@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from models import *
+import bl
 
 """
 uvicorn main:app --reload --port 8080
@@ -21,3 +23,7 @@ def root():
     return {"message": "Hello FastAPI"}
 
 
+@app.post("/users/")
+def create_item(user: User):
+    bl.insert_user(user)
+    return {"message": "User successfully added"}
