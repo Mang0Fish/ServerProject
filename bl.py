@@ -17,3 +17,10 @@ def get_user_by_username(username: str):
 def update_user(username: str, user: User):
     return dal.update_user(username, user)
 
+
+def delete_student(username: str):
+    return dal.delete_user(username)
+
+
+def get_tokens(username):
+    return dal.get_tokens(username)

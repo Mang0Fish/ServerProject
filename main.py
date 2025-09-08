@@ -15,6 +15,9 @@ git add .
 git commit -m "Enter a note here"
 git push
 
+or 
+
+git add .; git commit -m "quick update"; git push
 """
 
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
@@ -60,3 +63,17 @@ def update_item(username: str, user: User):
     return {"message": "User updated"}
 
 
+@app.delete("/user/{username}")
+def read_root(username: str):
+    user = bl.delete_student(username)
+    if not user:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    return {"message": "User successfully deleted"}
+
+
+@app.get("/tokens/{username}")
+def read_item(username: str):
+    tokens = bl.get_tokens(username)
+    if not tokens:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    return tokens

@@ -62,3 +62,20 @@ def update_user(username: str, user: User):
         conn.commit()
         user.username = username
         return cursor.rowcount == 1
+
+
+def delete_user(username):
+    with get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute("DELETE FROM users WHERE username = %s", (username,))
+        conn.commit()
+        return cursor.rowcount == 1
+
+
+def get_tokens(username):
+    with get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT tokens FROM users WHERE username = %s", (username,))
+        row = cursor.fetchone()
+    if row:
+        return row
+    else:
+        return None
