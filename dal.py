@@ -13,9 +13,6 @@ def get_conn():
     )
 
 
-
-
-
 def create_table():
     with get_conn() as conn, conn.cursor() as cursor:
         cursor.execute("""
@@ -56,3 +53,12 @@ def get_user_by_username(username: str):
             return User(username=row[0], password=row[1], tokens=row[2])
         else:
             return None
+
+
+def update_user(username: str, user: User):
+    with get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute("UPDATE users SET password = %s, tokens = %s WHERE username = %s",
+                       (user.password, user.tokens, username))
+        conn.commit()
+        user.username = username
+        return cursor.rowcount == 1

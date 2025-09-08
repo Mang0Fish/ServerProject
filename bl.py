@@ -12,3 +12,8 @@ def get_users():
 
 def get_user_by_username(username: str):
     return dal.get_user_by_username(username)
+
+
+def update_user(username: str, user: User):
+    return dal.update_user(username, user)
+
