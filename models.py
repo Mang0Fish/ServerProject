@@ -6,3 +6,7 @@ class User(BaseModel):
     password: str
     tokens: int
 
+class Payment(BaseModel):
+    credit_card: str
+    amount: int
+

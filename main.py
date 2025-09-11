@@ -77,3 +77,12 @@ def read_item(username: str):
     if not tokens:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return tokens
+
+
+@app.post("/add_tokens/{username}")
+def create_item(username: str, payment: Payment):
+    balance = bl.add_tokens(username, payment.amount)
+    if not balance:
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    return {f"User": username, "New balance": balance}
+

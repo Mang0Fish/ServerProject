@@ -24,3 +24,7 @@ def delete_student(username: str):
 
 def get_tokens(username):
     return dal.get_tokens(username)
+
+
+def add_tokens(username, amount):
+   return dal.add_tokens(username, amount)
