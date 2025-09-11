@@ -75,7 +75,7 @@ def get_tokens(username):
     with get_conn() as conn, conn.cursor() as cursor:
         cursor.execute("SELECT tokens FROM users WHERE username = %s", (username,))
         row = cursor.fetchone()
-    return row if row else None
+    return row[0] if row else None
 
 
 def add_tokens(username, amount):
