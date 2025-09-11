@@ -1,5 +1,0 @@
-# created by virtualenv automatically
-.env
-__pycache__/
-.idea/
-*.pyc
