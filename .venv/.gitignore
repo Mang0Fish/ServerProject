@@ -1,12 +1,5 @@
 # created by virtualenv automatically
-# Environment
 .env
-.venv/
-venv/
-
-# Python caches
 __pycache__/
-*.pyc
-
-# IDE
 .idea/
+*.pyc
