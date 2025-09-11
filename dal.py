@@ -28,11 +28,11 @@ def create_table():
 create_table()
 
 
-def insert_user(user: User):
+def insert_user(user: UserCreate):
     with get_conn() as conn, conn.cursor() as cursor:
         cursor.execute(
-            "INSERT INTO users (username, password, tokens) VALUES (%s, %s, %s)",
-            (user.username, user.password, user.tokens)
+            "INSERT INTO users (username, password, tokens) VALUES (%s, %s, 0)",
+            (user.username, user.password)
         )
         conn.commit()
     return user

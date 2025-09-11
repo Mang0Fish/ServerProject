@@ -29,7 +29,7 @@ def root():
 
 
 @app.post("/users/")
-def create_item(user: User):
+def create_item(user: UserCreate):
     try:
         bl.insert_user(user)
     except psycopg2.errors.UniqueViolation:  # username already exists
