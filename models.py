@@ -6,9 +6,16 @@ class User(BaseModel):
     password: str
     tokens: int
 
+
 class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=15)
+    password: str = Field(min_length=6, max_length=20)
+
+
+class UserOut(BaseModel):
     username: str
-    password: str
+    token: StrictInt
+
 
 class Payment(BaseModel):
     credit_card: str = Field(pattern=r"^\d{4}-\d{4}-\d{4}-\d{4}$", description="Credit card valid pattern check")

@@ -1,25 +1,38 @@
+import os
+
 from pydantic import BaseModel
 import psycopg2
 from models import *
 
+from dotenv import load_dotenv
 
-def get_conn():
-    return psycopg2.connect(
-        dbname="ServerUsers",
+"""
+dbname="ServerUsers",
         user="postgres",
         password="1234",
         host="localhost",
         port="5432"
+        
+DELETE LATER
+"""
+load_dotenv()
+def get_conn():
+    dataSrc = os.getenv("DATABASE_URL")
+    return psycopg2.connect(
+        dataSrc
     )
 
 
 def create_table():
     with get_conn() as conn, conn.cursor() as cursor:
         cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS users (
+                    CREATE TABLE IF NOT EXISTS public.users (
                         username TEXT PRIMARY KEY,
                         password TEXT NOT NULL,
-                        tokens INTEGER NOT NULL
+                        tokens   INTEGER NOT NULL DEFAULT 0,                        
+                        salt     TEXT NOT NULL,                        
+                        role     TEXT NOT NULL DEFAULT 'user',
+                        CONSTRAINT role_check CHECK (role IN ('user','admin'))
                     );
                 """)
         conn.commit()

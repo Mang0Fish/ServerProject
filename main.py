@@ -3,6 +3,8 @@ import psycopg2
 from pydantic import BaseModel
 from models import *
 import bl
+import os
+from dotenv import load_dotenv
 
 """
 uvicorn main:app --reload --port 8000 
@@ -18,7 +20,17 @@ git push
 or 
 
 git add .; git commit -m "quick update"; git push
+
+
+git checkout main
+git checkout -b feat/auth-jwt
+
 """
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
 
