@@ -22,9 +22,13 @@ def delete_student(username: str):
     return dal.delete_user(username)
 
 
-def get_tokens(username):
+def get_tokens(username: str):
     return dal.get_tokens(username)
 
 
-def add_tokens(username, amount):
-   return dal.add_tokens(username, amount)
+def add_tokens(username: str, amount: int):
+    return dal.add_tokens(username, amount)
+
+
+def verify_user(username: str, password: str):
+    return dal.verify_user(username, password)

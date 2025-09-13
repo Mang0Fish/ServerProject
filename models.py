@@ -16,7 +16,7 @@ class UserCreate(BaseModel):
 
 class UserOut(BaseModel):
     username: str
-    token: StrictInt
+    tokens: StrictInt
 
 
 class Payment(BaseModel):

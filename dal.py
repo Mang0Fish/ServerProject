@@ -3,7 +3,7 @@ import os
 from pydantic import BaseModel
 import psycopg2
 from models import *
-
+from auth import hash_password, verify_password
 from dotenv import load_dotenv
 
 """
@@ -42,10 +42,11 @@ create_table()
 
 
 def insert_user(user: UserCreate):
+    hash_pass, salt = hash_password(user.password)
     with get_conn() as conn, conn.cursor() as cursor:
         cursor.execute(
-            "INSERT INTO users (username, password, tokens) VALUES (%s, %s, 0)",
-            (user.username, user.password)
+            "INSERT INTO users (username, password, tokens, salt, role) VALUES (%s, %s, 0, %s, 'user')",
+            (user.username, hash_pass, salt)
         )
         conn.commit()
     return user
@@ -63,7 +64,7 @@ def get_user_by_username(username: str):
         cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
         row = cursor.fetchone()
         if row:
-            return User(username=row[0], password=row[1], tokens=row[2])
+            return User(username=row[0], password=row[1], tokens=row[2], salt=row[3], role=row[4])
         else:
             return None
 
@@ -96,3 +97,12 @@ def add_tokens(username, amount):
         cursor.execute("UPDATE users SET tokens = tokens + %s WHERE username = %s RETURNING tokens", (amount, username))
         row = cursor.fetchone()
         return row[0] if row else None
+
+
+def verify_user(username: str, password: str):
+    user = get_user_by_username(username)
+    if not user:
+        return None
+    if not verify_password(password, user.password, user.salt):
+        return None
+    return UserOut(username=user.username, tokens=user.tokens)

@@ -35,9 +35,12 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
 
 
-@app.get("/")
-def root():
-    return {"message": "Hello FastAPI!"}
+@app.get("/funcChecking")
+def root(username: str, password: str):
+    user = bl.verify_user(username, password)
+    if not user:
+        raise HTTPException(status_code=401, detail=f"Wrong Password or Username")
+    return user
 
 
 @app.post("/users/")
