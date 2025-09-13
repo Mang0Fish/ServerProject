@@ -55,7 +55,7 @@ def get_users():
     with get_conn() as conn, conn.cursor() as cursor:
         cursor.execute("SELECT * FROM users")
         rows = cursor.fetchall()
-        return [User(username=row[0], password=row[1], tokens=row[2]) for row in rows]
+        return [User(username=row[0], password=row[1], tokens=row[2], salt=row[3], role=row[4]) for row in rows]
 
 
 def get_user_by_username(username: str):

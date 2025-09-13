@@ -5,11 +5,13 @@ class User(BaseModel):
     username: str
     password: str
     tokens: int
+    salt: str
+    role: str
 
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=15)
-    password: str = Field(min_length=6, max_length=20)
+    password: str = Field(min_length=6, max_length=300)
 
 
 class UserOut(BaseModel):
