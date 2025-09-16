@@ -29,7 +29,7 @@ git checkout -b feat/auth-jwt
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
+# SECRET_KEY = os.getenv("SECRET_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
@@ -100,4 +100,3 @@ def create_item(username: str, payment: Payment):
     if not balance:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return {f"User": username, "New balance": balance}
-
