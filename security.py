@@ -8,7 +8,8 @@ SECRET = os.getenv("JWT_SECRET", "to_be_long_string")
 ALG = "HS256"
 ACCESS_MIN = int(os.getenv("JWT_ACCESS_MIN", "15"))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="SET URL AFTER")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") #maybe false
+
 
 def _now():
     return datetime.now(timezone.utc)

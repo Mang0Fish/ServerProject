@@ -1,10 +1,12 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 import psycopg2
 from pydantic import BaseModel
 from models import *
 import bl
 import os
 from dotenv import load_dotenv
+from security import get_current_user
+from routers.token import router as token_router
 
 """
 uvicorn main:app --reload --port 8000 
@@ -33,7 +35,7 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
-
+app.include_router(token_router, prefix="/auth", tags=["auth"])
 
 @app.get("/funcChecking")
 def root(username: str, password: str):
@@ -100,3 +102,8 @@ def create_item(username: str, payment: Payment):
     if not balance:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return {f"User": username, "New balance": balance}
+
+
+@app.get("/protected")
+def protected_example(current=Depends(get_current_user)):
+    return {"hello": current["username"]}
