@@ -6,6 +6,7 @@ from security import create_access_token
 
 router = APIRouter()
 
+
 @router.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends()):
     user = bl.verify_user(form.username, form.password)

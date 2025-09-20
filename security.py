@@ -8,7 +8,7 @@ SECRET = os.getenv("JWT_SECRET", "to_be_long_string")
 ALG = "HS256"
 ACCESS_MIN = int(os.getenv("JWT_ACCESS_MIN", "15"))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login") #maybe false
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")  # maybe false
 
 
 def _now():

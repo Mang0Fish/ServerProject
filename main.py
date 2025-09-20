@@ -37,7 +37,8 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
 app.include_router(token_router, prefix="/auth", tags=["auth"])
 
-@app.get("/funcChecking")
+
+@app.get("/funcCheckinggg")
 def root(username: str, password: str):
     user = bl.verify_user(username, password)
     if not user:
