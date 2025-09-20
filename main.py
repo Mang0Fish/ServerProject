@@ -38,7 +38,7 @@ app = FastAPI(title="EZPredict", description="Learn and predict using various mo
 app.include_router(token_router, prefix="/auth", tags=["auth"])
 
 
-@app.get("/funcCheckinggg")
+@app.get("/funcCheckingg")
 def root(username: str, password: str):
     user = bl.verify_user(username, password)
     if not user:
@@ -83,7 +83,7 @@ def update_item(username: str, user: User):
 
 @app.delete("/user/{username}")
 def read_root(username: str):
-    user = bl.delete_student(username)
+    user = bl.delete_user(username)
     if not user:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return {"message": "User successfully deleted"}
@@ -108,3 +108,5 @@ def create_item(username: str, payment: Payment):
 @app.get("/protected")
 def protected_example(current=Depends(get_current_user)):
     return {"hello": current["username"]}
+
+

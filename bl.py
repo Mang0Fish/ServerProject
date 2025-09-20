@@ -18,7 +18,7 @@ def update_user(username: str, user: User):
     return dal.update_user(username, user)
 
 
-def delete_student(username: str):
+def delete_user(username: str):
     return dal.delete_user(username)
 
 
