@@ -89,6 +89,15 @@ def read_root(username: str):
     return {"message": "User successfully deleted"}
 
 
+@app.delete("/user_password/{username}")
+def read_item(username: str, password: str):
+    user = bl.verify_user(username, password)
+    if not user:
+        raise HTTPException(status_code=401, detail=f"Wrong Password or Username")
+    bl.delete_user(username)
+    return {"message": f"User {username} successfully deleted"}
+
+
 @app.get("/tokens/{username}")
 def read_item(username: str):
     tokens = bl.get_tokens(username)

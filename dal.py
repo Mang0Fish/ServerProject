@@ -16,10 +16,12 @@ dbname="ServerUsers",
 DELETE LATER
 """
 load_dotenv()
+
+
 def get_conn():
-    dataSrc = os.getenv("DATABASE_URL")
+    data_src = os.getenv("DATABASE_URL")
     return psycopg2.connect(
-        dataSrc
+        data_src
     )
 
 
