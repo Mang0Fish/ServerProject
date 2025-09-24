@@ -59,12 +59,11 @@ def create_item(user: UserCreate):
 
 @app.get("/users/")
 def get_all():
-    result = bl.get_users()
-    return {"result": result}
+    return bl.get_users()
 
 
 @app.get("/users/{username}")
-def read_item(username: str):
+def read_user(username: str):
     user = bl.get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")

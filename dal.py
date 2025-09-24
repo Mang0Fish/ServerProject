@@ -56,27 +56,27 @@ def insert_user(user: UserCreate):
 
 def get_users():
     with get_conn() as conn, conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM users")
+        cursor.execute("SELECT username, tokens FROM users")
         rows = cursor.fetchall()
-        return [User(username=row[0], password=row[1], tokens=row[2], salt=row[3], role=row[4]) for row in rows]
+        return [UserOut(username=row[0], tokens=row[1]) for row in rows]
 
 
 def get_user_by_username(username: str):
     with get_conn() as conn, conn.cursor() as cursor:
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT username, tokens FROM users WHERE username = %s", (username,))
         row = cursor.fetchone()
         if row:
-            return User(username=row[0], password=row[1], tokens=row[2], salt=row[3], role=row[4])
+            return UserOut(username=row[0], tokens=row[1])
         else:
             return None
 
 
 def update_user(username: str, user: User):
+    hash_pass, salt = hash_password(user.password)
     with get_conn() as conn, conn.cursor() as cursor:
-        cursor.execute("UPDATE users SET password = %s, tokens = %s WHERE username = %s",
-                       (user.password, user.tokens, username))
+        cursor.execute("UPDATE users SET password = %s, tokens = %s, salt = %s WHERE username = %s",
+                       (hash_pass, user.tokens, salt, username))
         conn.commit()
-        user.username = username
         return cursor.rowcount == 1
 
 
