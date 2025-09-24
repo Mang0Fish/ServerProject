@@ -71,6 +71,16 @@ def get_user_by_username(username: str):
             return None
 
 
+def get_user_auth(username: str):
+    with get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        row = cursor.fetchone()
+        if row:
+            return User(username=row[0], password=row[1], tokens=row[2], salt=row[3], role=row[4])
+        else:
+            return None
+
+
 def update_user(username: str, user: User):
     hash_pass, salt = hash_password(user.password)
     with get_conn() as conn, conn.cursor() as cursor:
@@ -102,9 +112,9 @@ def add_tokens(username, amount):
 
 
 def verify_user(username: str, password: str):
-    user = get_user_by_username(username)
+    user = get_user_auth(username)
     if not user:
         return None
     if not verify_password(password, user.password, user.salt):
         return None
-    return UserOut(username=user.username, tokens=user.tokens)
+    return {'username': user.username, 'tokens': user.tokens, 'role': user.role}

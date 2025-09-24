@@ -113,8 +113,8 @@ def create_item(username: str, payment: Payment):
     return {f"User": username, "New balance": balance}
 
 
-@app.get("/protected")
+@app.get("/protected/me")
 def protected_example(current=Depends(get_current_user)):
-    return {"hello": current["username"]}
+    return {"hello": current["username"], "role": current["role"]}
 
 

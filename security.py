@@ -15,13 +15,15 @@ def _now():
     return datetime.now(timezone.utc)
 
 
-def create_access_token(username: str):
+def create_access_token(username: str, role: str):
     now = _now()
     payload = {
-        "sub":username,
+        "sub": username,
         "iat": int(_now().timestamp()),
         "nbf": int((now - timedelta(seconds=5)).timestamp()),
         "exp": int((_now() + timedelta(minutes=ACCESS_MIN)).timestamp()),
+        "role": role,
+        "typ": "access"
     }
     return jwt.encode(payload, SECRET, algorithm=ALG)
 
@@ -37,10 +39,12 @@ def verify_read(token: str):
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     data = verify_read(token)
+    if data.get("typ") != "access":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Access token required")
     sub = data.get("sub")
     if not sub:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-    return {"username": data.get("sub")}
+    return {"username": data.get("sub"), "role": data.get("role", "user")}
 
 
 
