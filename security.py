@@ -3,12 +3,16 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
+from dotenv import load_dotenv
+
+load_dotenv()
 
 SECRET = os.getenv("JWT_SECRET", "to_be_long_string")
-ALG = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_MIN = int(os.getenv("JWT_ACCESS_MIN", "15"))
+ALG = os.getenv("ALG", "HS256")
+ACCESS_MIN = int(os.getenv("ACCESS_MIN", "2"))
+REFRESH_DAYS = int(os.getenv("REFRESH_DAYS", '1'))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")  # maybe false
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def _now():
@@ -24,6 +28,18 @@ def create_access_token(username: str, role: str):
         "exp": int((_now() + timedelta(minutes=ACCESS_MIN)).timestamp()),
         "role": role,
         "typ": "access"
+    }
+    return jwt.encode(payload, SECRET, algorithm=ALG)
+
+
+def create_refresh_token(username: str):
+    now = _now()
+    payload = {
+        "sub": username,
+        "iat": int(now.timestamp()),
+        "nbf": int((now - timedelta(seconds=5)).timestamp()),
+        "exp": int((now + timedelta(days=REFRESH_DAYS)).timestamp()),
+        "typ": "refresh"
     }
     return jwt.encode(payload, SECRET, algorithm=ALG)
 

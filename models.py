@@ -23,3 +23,6 @@ class Payment(BaseModel):
     credit_card: str = Field(pattern=r"^\d{4}-\d{4}-\d{4}-\d{4}$", description="Credit card valid pattern check")
     amount: StrictInt = Field(gt=0, description="Tokens must be a whole number greater than 0")
 
+
+class RefreshIn(BaseModel):
+    refresh_token: str

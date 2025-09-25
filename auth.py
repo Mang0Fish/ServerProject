@@ -2,7 +2,9 @@ from __future__ import annotations
 import os
 import hmac
 import hashlib
+from dotenv import load_dotenv
 
+load_dotenv()
 
 ITERATIONS = int(os.getenv("PBKDF2_ITERATIONS", "1000"))
 SALT_BYTES = int(os.getenv("PBKDF2_SALT_BYTES", "16"))
