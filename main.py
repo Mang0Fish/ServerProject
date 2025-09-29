@@ -5,7 +5,7 @@ from models import *
 import bl
 import os
 from dotenv import load_dotenv
-from security import get_current_user
+from security import get_current_user, is_admin
 from routers.token import router as token_router
 
 """
@@ -57,20 +57,21 @@ def create_item(user: UserCreate):
     return {"message": "User successfully added"}
 
 
-@app.get("/users/")
-def get_all():
+@app.get("/admin/users/")
+def get_all(current=Depends(get_current_user)):
     return bl.get_users()
 
 
-@app.get("/users/{username}")
-def read_user(username: str):
+@app.get("/admin/users/{username}")
+def read_user(username: str, current=Depends(get_current_user)):
     user = bl.get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return user
 
 
-@app.put("/users/{username}")
+"""
+@app.put("/users/{username}")  # updates password with no hashing (just delete this later)
 def update_item(username: str, user: User):
     if username != user.username:
         raise HTTPException(status_code=400, detail="Username in path and body must match")
@@ -78,17 +79,21 @@ def update_item(username: str, user: User):
     if not found:
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "User updated"}
+"""
+# possible password update
 
 
-@app.delete("/user/{username}")
-def read_root(username: str):
+@app.delete("/admin/user/{username}")
+def read_root(username: str, current=Depends(get_current_user)):
+    if current.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
     user = bl.delete_user(username)
     if not user:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return {"message": "User successfully deleted"}
 
 
-@app.delete("/user_password/{username}")
+@app.delete("/user_password/{username}")  # Not safe but a project requirement
 def read_item(username: str, password: str):
     user = bl.verify_user(username, password)
     if not user:
@@ -100,7 +105,7 @@ def read_item(username: str, password: str):
 @app.get("/tokens/{username}")
 def read_item(username: str):
     tokens = bl.get_tokens(username)
-    if not tokens:
+    if tokens is None:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return tokens
 

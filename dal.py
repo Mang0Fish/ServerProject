@@ -40,7 +40,7 @@ def create_table():
         conn.commit()
 
 
-create_table()
+# create_table()
 
 
 def insert_user(user: UserCreate):
@@ -88,6 +88,18 @@ def update_user(username: str, user: User):
                        (hash_pass, user.tokens, salt, username))
         conn.commit()
         return cursor.rowcount == 1
+
+
+# possible password update
+"""
+def update_password(username: str, new_password: str):
+    hash_pass, salt = hash_password(new_password)
+    with get_conn() as conn, conn.cursor() as cursor:
+         cursor.execute("UPDATE users SET password = %s, salt = %s WHERE username = %s",
+                        (hash_pass, salt, username))
+         conn.commit()
+         return cursor.rowcount == 1
+"""
 
 
 def delete_user(username):

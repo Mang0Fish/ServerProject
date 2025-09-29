@@ -9,7 +9,7 @@ load_dotenv()
 
 SECRET = os.getenv("JWT_SECRET", "to_be_long_string")
 ALG = os.getenv("ALG", "HS256")
-ACCESS_MIN = int(os.getenv("ACCESS_MIN", "2"))
+ACCESS_MIN = int(os.getenv("ACCESS_MIN", "30"))
 REFRESH_DAYS = int(os.getenv("REFRESH_DAYS", '1'))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -46,7 +46,7 @@ def create_refresh_token(username: str):
 
 def verify_read(token: str):
     try:
-        return jwt.decode(token, SECRET, algorithms=[ALG], options={"require": ["exp", "iat", "sub"]}, leeway=10)
+        return jwt.decode(token, SECRET, algorithms=[ALG], options={"require": ["exp", "iat", "sub", "typ", "role"]}, leeway=10)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError:
@@ -63,5 +63,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     return {"username": data.get("sub"), "role": data.get("role", "user")}
 
 
+def is_admin(current=Depends(get_current_user)):
+    if current.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return current
 
 
