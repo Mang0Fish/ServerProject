@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from security import get_current_user, is_admin
 from routers.token import router as token_router
+from security import create_access_token, create_refresh_token
+from routers.token import generate_tokens_for_user
 
 """
 uvicorn main:app --reload --port 8000 
@@ -54,15 +56,16 @@ def create_item(user: UserCreate):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"User '{user.username}' already exists")
-    return {"message": "User successfully added"}
+    return "message: user added! "
+    # return generate_tokens_for_user(user.username, user.password)
 
 
-@app.get("/admin/users/")
+@app.get("/admin/users/", response_model=list[UserOut])
 def get_all(current=Depends(get_current_user)):
     return bl.get_users()
 
 
-@app.get("/admin/users/{username}")
+@app.get("/admin/users/{username}", response_model=UserOut)
 def read_user(username: str, current=Depends(get_current_user)):
     user = bl.get_user_by_username(username)
     if not user:
@@ -102,20 +105,20 @@ def read_item(username: str, password: str):
     return {"message": f"User {username} successfully deleted"}
 
 
-@app.get("/tokens/{username}")
-def read_item(username: str):
-    tokens = bl.get_tokens(username)
+@app.get("/tokens/")
+def read_item(current=Depends(get_current_user)):
+    tokens = bl.get_tokens(current["username"])
     if tokens is None:
-        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+        raise HTTPException(status_code=404, detail=f"User '{current["username"]}' not found")
     return tokens
 
 
-@app.post("/add_tokens/{username}")
-def create_item(username: str, payment: Payment):
-    balance = bl.add_tokens(username, payment.amount)
+@app.post("/add_tokens/")
+def create_item(payment: Payment, current=Depends(get_current_user)):
+    balance = bl.add_tokens(current["username"], payment.amount)
     if not balance:
-        raise HTTPException(status_code=404, detail=f"User '{username}' not found")
-    return {f"User": username, "New balance": balance}
+        raise HTTPException(status_code=404, detail=f"User '{current["username"]}' not found")
+    return {f"User": current["username"], "New balance": balance}
 
 
 @app.get("/protected/me")

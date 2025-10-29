@@ -8,14 +8,24 @@ from models import RefreshIn
 router = APIRouter()
 
 
-@router.post("/login")
-def login(form: OAuth2PasswordRequestForm = Depends()):
-    user = bl.verify_user(form.username, form.password)
+def generate_tokens_for_user(username: str, password: str):
+    user = bl.verify_user(username, password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong username or password")
     access_token = create_access_token(username=user['username'], role=user['role'])
     refresh_token = create_refresh_token(username=user['username'])
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+
+@router.post("/login")
+def login(form: OAuth2PasswordRequestForm = Depends()):
+    return generate_tokens_for_user(form.username, form.password)
+    # user = bl.verify_user(form.username, form.password)
+    # if not user:
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong username or password")
+    # access_token = create_access_token(username=user['username'], role=user['role'])
+    # refresh_token = create_refresh_token(username=user['username'])
+    # return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
 
 @router.post("/auth/refresh")
