@@ -9,6 +9,9 @@ from security import get_current_user, is_admin
 from routers.token import router as token_router
 from security import create_access_token, create_refresh_token
 from routers.token import generate_tokens_for_user
+from fastapi import File, UploadFile
+import pandas as pd
+from io import StringIO
 
 """
 uvicorn main:app --reload --port 8000 
@@ -46,6 +49,15 @@ def root(username: str, password: str):
     if not user:
         raise HTTPException(status_code=401, detail=f"Wrong Password or Username")
     return user
+
+
+@app.post("/upload-csv/")
+async def upload(file: UploadFile = File(...)):
+    data = await file.read()
+    csv = data.decode("utf-8")
+    df = pd.read_csv(StringIO(csv))
+    columns = df.columns.tolist()
+    return {"filename": file.filename, "columns": columns}
 
 
 @app.post("/users/")
