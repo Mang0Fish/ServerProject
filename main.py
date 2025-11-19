@@ -12,6 +12,10 @@ from routers.token import generate_tokens_for_user
 from fastapi import File, UploadFile
 import pandas as pd
 from io import StringIO
+from ml.training import train_example_model, train_logistic_reg
+from ml.utils import save_model
+from ml.utils import load_model
+from fastapi import Body, Form
 
 """
 uvicorn main:app --reload --port 8000 
@@ -51,13 +55,63 @@ def root(username: str, password: str):
     return user
 
 
-@app.post("/upload-csv/")
-async def upload(file: UploadFile = File(...)):
+
+# @app.post("/upload-csv/")
+# async def upload(file: UploadFile = File(...)):
+#     data = await file.read()
+#     csv = data.decode("utf-8")
+#     df = pd.read_csv(StringIO(csv))
+#     columns = df.columns.tolist()
+#     return {"filename": file.filename, "columns": columns}
+
+
+# Add user log in requirement !!!
+@app.post("/ml/train-csv")
+async def train_csv(file: UploadFile = File(...), label_column: str = Form(...)):
+    # Step 1: read csv file into a DataFrame
     data = await file.read()
-    csv = data.decode("utf-8")
-    df = pd.read_csv(StringIO(csv))
-    columns = df.columns.tolist()
-    return {"filename": file.filename, "columns": columns}
+    csv_string = data.decode("utf-8")
+    df = pd.read_csv(StringIO(csv_string))
+
+    if label_column not in df.columns:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Label column '{label_column}' does not exist"
+        )
+
+    features = [c for c in df.columns if c != label_column]
+    x = df[features]
+    y = df[label_column]
+
+    model, acc = train_logistic_reg(x, y)
+    saved_path = save_model(model)
+
+    return {
+        "msg": "CSV loaded",
+        "rows": len(df),
+        "features": features,
+        "label": label_column,
+        "accuracy": acc,
+        "model": saved_path
+    }
+
+# @app.post("/ml/train")
+# def train_model():
+#     model, acc = train_example_model()
+#
+#     saved_path = save_model(model)
+#
+#     return {"accuracy": acc, "model":saved_path}
+
+
+@app.post("/ml/predict")
+def predict(model_path: str = Body(...), input_data: list = Body(...)):
+    model = load_model(model_path)
+
+    # model expects a 2D array → wrap the list in another list
+    prediction = model.predict([input_data])
+
+    return {"prediction": int(prediction[0])}
 
 
 @app.post("/users/")
