@@ -1,10 +1,21 @@
+from enum import Enum
+from unittest import case
+
 import joblib
 from datetime import datetime
 from fastapi import HTTPException
 import pandas as pd
 from io import StringIO
+from ml.training import train_catboost_classifier, train_catboost_regressor, train_random_forest_classifier, \
+    train_random_forest_regressor, train_svm_classifier, train_svm_regressor, train_linear_reg, train_logistic_reg
 
-from ml.training import train_catboost_classifier, train_catboost_regressor
+
+class ModelEnum(str, Enum):
+    catboost = "catboost"
+    randomforest = "randomforest"
+    svm = "svm"
+    linearregression = "linearregression"
+    logisticregression = "logisticregression"
 
 
 def save_model(model):
@@ -54,7 +65,7 @@ def verify_file(data, label_column):
     return df
 
 
-def train_model(df, label_column):
+def train_model(df, label_column, model_type):
     y = df[label_column]
     x = df.drop(columns=label_column)
 
@@ -67,10 +78,29 @@ def train_model(df, label_column):
     else:
         problem_type = "regression"
 
-    if problem_type == "classification":
-        model, score = train_catboost_classifier(x, y, cat_cols)
-    else:
-        model, score = train_catboost_regressor(x, y, cat_cols)
+    match model_type:
+        case ModelEnum.catboost:
+            if problem_type == "classification":
+                model, score = train_catboost_classifier(x, y, cat_cols)
+            else:
+                model, score = train_catboost_regressor(x, y, cat_cols)
+        case ModelEnum.randomforest:
+            if problem_type == "classification":
+                model, score = train_random_forest_classifier(x, y)
+            else:
+                model, score = train_random_forest_regressor(x, y)
+        case ModelEnum.svm:
+            if problem_type == "classification":
+                model, score = train_svm_classifier(x, y)
+            else:
+                model, score = train_svm_regressor(x, y)
+        case ModelEnum.linearregression:
+            model, score = train_linear_reg(x, y)
+        case ModelEnum.logisticregression:
+            model, score = train_logistic_reg(x, y)
+        case _:
+            raise HTTPException(400, f"Unknown model type: {model_type}")
+
 
     saved_path = save_model(model)
 

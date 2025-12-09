@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, Query, File, UploadFile, Body, Form
 import psycopg2
 from pydantic import BaseModel
 from models import *
@@ -9,12 +9,11 @@ from security import get_current_user, is_admin
 from routers.token import router as token_router
 from security import create_access_token, create_refresh_token
 from routers.token import generate_tokens_for_user
-from fastapi import File, UploadFile
 import pandas as pd
 from io import StringIO
 from ml.training import train_logistic_reg, train_catboost_classifier, train_catboost_regressor
-from ml.utils import save_model, load_model, verify_file, train_model
-from fastapi import Body, Form
+from ml.utils import save_model, load_model, verify_file, train_model, ModelEnum
+
 
 """
 uvicorn main:app --reload --port 8000 
@@ -57,7 +56,9 @@ def root(username: str, password: str):
 
 # Add user log in requirement !!!
 @app.post("/ml/train-csv")
-async def train_csv(file: UploadFile = File(...), label_column: str = Form(...)):
+async def train_csv(file: UploadFile = File(...),
+                    label_column: str = Form(...),
+                    model_type: ModelEnum = Query(..., description="Select the model")):
     # Step 1: read csv file into a DataFrame
     if not file.filename.endswith(".csv"):
         raise HTTPException(400, "File must be a CSV")
@@ -65,7 +66,7 @@ async def train_csv(file: UploadFile = File(...), label_column: str = Form(...))
     data = await file.read()
     df = verify_file(data, label_column)
 
-    model_trained = train_model(df, label_column)
+    model_trained = train_model(df, label_column, model_type)
     return model_trained
 
 
