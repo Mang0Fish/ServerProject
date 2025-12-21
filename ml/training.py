@@ -17,7 +17,14 @@ add to classification train_test_split: stratify = y
 """
 
 
-def train_linear_reg(x, y):
+def train_linear_reg(x, y, hyperparams):
+    params = {
+        "fit_intercept": hyperparams.get("fit_intercept", True),
+        "positive" : hyperparams.get("positive", False),
+    }
+    # model type
+    model = LinearRegression(**params)
+
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
         x,
@@ -25,9 +32,6 @@ def train_linear_reg(x, y):
         test_size=0.2,
         random_state=42
     )
-
-    # model type
-    model = LinearRegression()
 
     # training
     model.fit(x_train, y_train)
@@ -40,7 +44,17 @@ def train_linear_reg(x, y):
     return model, r2
 
 
-def train_logistic_reg(x, y):
+def train_logistic_reg(x, y, hyperparams):
+    params = {
+        "max_iter": hyperparams.get("max_iter", 1000),
+        "C": hyperparams.get("C", 1.0),
+        "solver": hyperparams.get("solver", "lbfgs"),
+        "penalty": hyperparams.get("penalty", "l2"),
+    }
+
+    # model type
+    model = LogisticRegression(**params)
+
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
         x,
@@ -49,11 +63,6 @@ def train_logistic_reg(x, y):
         random_state=42,
         stratify=y
     )
-
-    # model type
-    model = LogisticRegression(max_iter=1000)
-    """The default solver is 'lbfgs', if you want to change it to saga you can change 
-    the penalty to l1 (only with saga), the default penalty is l2"""
 
     # training
     model.fit(x_train, y_train)
@@ -66,7 +75,18 @@ def train_logistic_reg(x, y):
     return model, acc
 
 
-def train_random_forest_classifier(x, y):
+def train_random_forest_classifier(x, y, hyperparams):
+    params = {
+        "n_estimators": hyperparams.get("n_estimators", 30),
+        "max_depth": hyperparams.get("max_depth", None),
+        "n_jobs": hyperparams.get("n_jobs", -1),
+        "random_state": hyperparams.get("random_state", 42),
+        "min_samples_split": hyperparams.get("min_samples_split", 2),
+        "min_samples_leaf": hyperparams.get("min_samples_leaf", 1),
+    }
+    # model type
+    model = RandomForestClassifier(**params)
+
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
         x,
@@ -74,14 +94,6 @@ def train_random_forest_classifier(x, y):
         test_size=0.2,
         random_state=42,
         stratify=y
-    )
-
-    # model type
-    model = RandomForestClassifier(
-        n_estimators=350,
-        max_depth=None,
-        n_jobs=-1,
-        random_state=42
     )
 
     # training
@@ -95,20 +107,24 @@ def train_random_forest_classifier(x, y):
     return model, acc
 
 
-def train_random_forest_regressor(x, y):
+def train_random_forest_regressor(x, y, hyperparams):
+    params = {
+        "n_estimators": hyperparams.get("n_estimators", 30),
+        "max_depth": hyperparams.get("max_depth", None),
+        "n_jobs": hyperparams.get("n_jobs", -1),
+        "random_state": hyperparams.get("random_state", 42),
+        "min_samples_split": hyperparams.get("min_samples_split", 2),
+        "min_samples_leaf": hyperparams.get("min_samples_leaf", 1),
+    }
+
+    # model type
+    model = RandomForestRegressor(**params)
+
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
         test_size=0.2,
-        random_state=42
-    )
-
-    # model type
-    model = RandomForestRegressor(
-        n_estimators=350,
-        max_depth=None,
-        n_jobs=-1,
         random_state=42
     )
 
@@ -123,7 +139,17 @@ def train_random_forest_regressor(x, y):
     return model, r2
 
 
-def train_svm_classifier(x, y):
+def train_svm_classifier(x, y, hyperparams):
+    params = {
+        "C": hyperparams.get("C", 1.0),
+        "kernel": hyperparams.get("kernel", "rbf"),
+        "gamma": hyperparams.get("gamma", "scale"),
+        "degree": hyperparams.get("degree", 3),
+        "probability": True,
+    }
+
+    model = SVC(**params)
+
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
@@ -132,12 +158,6 @@ def train_svm_classifier(x, y):
         stratify=y
     )
 
-    model = SVC(
-        kernel="rbf",
-        C=1.0,
-        gamma="scale",
-        probability=True # To predict probability with predict_proba
-    )
 
     model.fit(x_train, y_train)
 
@@ -147,29 +167,42 @@ def train_svm_classifier(x, y):
     return model, acc
 
 
-def train_svm_regressor(x, y):
+def train_svm_regressor(x, y, hyperparams):
+    params = {
+        "C": hyperparams.get("C", 1.0),
+        "kernel": hyperparams.get("kernel", "rbf"),
+        "gamma": hyperparams.get("gamma", "scale"),
+        "degree": hyperparams.get("degree", 3),
+    }
+
+    model = SVC(**params)
+
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
         test_size=0.2,
         random_state=42,
     )
-
-    model = SVR(
-        kernel="rbf",
-        C=1.0,
-        gamma="scale",
-    )
-
-    model.fit(x_train, y_train)
 
     y_pred = model.predict(x_test)
     r2 = r2_score(y_test, y_pred)
 
     return model, r2
 
+# Cat cols is no longer = None, make sure there are no errors
+def train_catboost_classifier(x, y, categorical_cols, hyperparams):
+    params = {
+        "iterations": hyperparams.get("iterations", 500),
+        "learning_rate": hyperparams.get("learning_rate", 0.05),
+        "depth": hyperparams.get("depth", 6),
+        "loss_function": hyperparams.get("loss_function", "Logloss"),
+        "eval_metric": hyperparams.get("eval_metric", "Accuracy"),
+        "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
+        "verbose": False,
+    }
 
-def train_catboost_classifier(x, y, categorical_cols=None):
+    model = CatBoostClassifier(**params)
+
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
@@ -178,20 +211,11 @@ def train_catboost_classifier(x, y, categorical_cols=None):
         stratify=y
     )
 
-    model = CatBoostClassifier(
-        iterations=500,
-        learning_rate=0.05,
-        depth=6,
-        loss_function="Logloss",
-        eval_metric="Accuracy",
-        verbose=False,
-        early_stopping_rounds=50
-    )
-
     model.fit(
         x_train, y_train,
         eval_set=(x_test, y_test),
-        cat_features=categorical_cols
+        cat_features=categorical_cols,
+        use_best_model = True
     )
 
     y_pred = model.predict(x_test)
@@ -200,7 +224,19 @@ def train_catboost_classifier(x, y, categorical_cols=None):
     return model, acc
 
 
-def train_catboost_regressor(x, y, categorical_cols=None):
+def train_catboost_regressor(x, y, categorical_cols, hyperparams):
+    params = {
+        "iterations": hyperparams.get("iterations", 500),
+        "learning_rate": hyperparams.get("learning_rate", 0.05),
+        "depth": hyperparams.get("depth", 6),
+        "loss_function": hyperparams.get("loss_function", "RMSE"),
+        "eval_metric": hyperparams.get("eval_metric", "RMSE"),
+        "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
+        "verbose": False,
+    }
+
+    model = CatBoostRegressor(**params)
+
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
@@ -208,19 +244,11 @@ def train_catboost_regressor(x, y, categorical_cols=None):
         random_state=42,
     )
 
-    model = CatBoostRegressor(
-        iterations=500,
-        learning_rate=0.05,
-        depth=6,
-        loss_function="RMSE",
-        verbose=False,
-        early_stopping_rounds=50
-    )
-
     model.fit(
         x_train, y_train,
         eval_set=(x_test, y_test),
-        cat_features=categorical_cols
+        cat_features=categorical_cols,
+        use_best_model = True
     )
 
     y_pred = model.predict(x_test)

@@ -1,5 +1,4 @@
 from enum import Enum
-from unittest import case
 
 import joblib
 from datetime import datetime
@@ -65,7 +64,9 @@ def verify_file(data, label_column):
     return df
 
 
-def train_model(df, label_column, model_type):
+def train_model(df, label_column, model_type, hyperparams):
+    if hyperparams is None:
+        hyperparams = {}
     y = df[label_column]
     x = df.drop(columns=label_column)
 
@@ -78,29 +79,34 @@ def train_model(df, label_column, model_type):
     else:
         problem_type = "regression"
 
+    model = None
+    score = None
+
     match model_type:
         case ModelEnum.catboost:
             if problem_type == "classification":
-                model, score = train_catboost_classifier(x, y, cat_cols)
+                model, score = train_catboost_classifier(x, y, cat_cols, hyperparams)
             else:
-                model, score = train_catboost_regressor(x, y, cat_cols)
+                model, score = train_catboost_regressor(x, y, cat_cols, hyperparams)
         case ModelEnum.randomforest:
             if problem_type == "classification":
-                model, score = train_random_forest_classifier(x, y)
+                model, score = train_random_forest_classifier(x, y, hyperparams)
             else:
-                model, score = train_random_forest_regressor(x, y)
+                model, score = train_random_forest_regressor(x, y, hyperparams)
         case ModelEnum.svm:
             if problem_type == "classification":
-                model, score = train_svm_classifier(x, y)
+                model, score = train_svm_classifier(x, y, hyperparams)
             else:
-                model, score = train_svm_regressor(x, y)
+                model, score = train_svm_regressor(x, y, hyperparams)
         case ModelEnum.linearregression:
-            model, score = train_linear_reg(x, y)
+            model, score = train_linear_reg(x, y, hyperparams)
         case ModelEnum.logisticregression:
-            model, score = train_logistic_reg(x, y)
+            model, score = train_logistic_reg(x, y, hyperparams)
         case _:
             raise HTTPException(400, f"Unknown model type: {model_type}")
 
+    if model is None or score is None:
+        raise HTTPException(500, "Model training failed")
 
     saved_path = save_model(model)
 

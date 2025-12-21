@@ -58,7 +58,9 @@ def root(username: str, password: str):
 @app.post("/ml/train-csv")
 async def train_csv(file: UploadFile = File(...),
                     label_column: str = Form(...),
-                    model_type: ModelEnum = Query(..., description="Select the model")):
+                    model_type: ModelEnum = Query(..., description="Select the model"),
+                    hyperparams :dict = Body(default={})):
+
     # Step 1: read csv file into a DataFrame
     if not file.filename.endswith(".csv"):
         raise HTTPException(400, "File must be a CSV")
@@ -66,10 +68,8 @@ async def train_csv(file: UploadFile = File(...),
     data = await file.read()
     df = verify_file(data, label_column)
 
-    model_trained = train_model(df, label_column, model_type)
+    model_trained = train_model(df, label_column, model_type, hyperparams)
     return model_trained
-
-
 
 
 @app.post("/ml/predict")
