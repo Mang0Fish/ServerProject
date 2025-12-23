@@ -5,6 +5,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.svm import SVC, SVR
 from catboost import CatBoostClassifier, CatBoostRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 """
 accuracy score, F1, precision, recall = classification
@@ -22,8 +24,11 @@ def train_linear_reg(x, y, hyperparams):
         "fit_intercept": hyperparams.get("fit_intercept", True),
         "positive" : hyperparams.get("positive", False),
     }
-    # model type
-    model = LinearRegression(**params)
+
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", LinearRegression(**params))
+    ])
 
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
@@ -34,14 +39,14 @@ def train_linear_reg(x, y, hyperparams):
     )
 
     # training
-    model.fit(x_train, y_train)
+    pipeline.fit(x_train, y_train)
 
     # evaluation
-    y_pred = model.predict(x_test)
+    y_pred = pipeline.predict(x_test)
     r2 = r2_score(y_test, y_pred)
 
     # return the model and accuracy
-    return model, r2
+    return pipeline, r2
 
 
 def train_logistic_reg(x, y, hyperparams):
@@ -52,8 +57,10 @@ def train_logistic_reg(x, y, hyperparams):
         "penalty": hyperparams.get("penalty", "l2"),
     }
 
-    # model type
-    model = LogisticRegression(**params)
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", LogisticRegression(**params))
+    ])
 
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
@@ -65,14 +72,14 @@ def train_logistic_reg(x, y, hyperparams):
     )
 
     # training
-    model.fit(x_train, y_train)
+    pipeline.fit(x_train, y_train)
 
     # evaluation
-    y_pred = model.predict(x_test)
+    y_pred = pipeline.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
 
-    # return the model and accuracy
-    return model, acc
+    # returns the pipeline and accuracy
+    return pipeline, acc
 
 
 def train_random_forest_classifier(x, y, hyperparams):
@@ -148,7 +155,10 @@ def train_svm_classifier(x, y, hyperparams):
         "probability": True,
     }
 
-    model = SVC(**params)
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", LogisticRegression(**params))
+    ])
 
     x_train, x_test, y_train, y_test = train_test_split(
         x,
@@ -159,12 +169,12 @@ def train_svm_classifier(x, y, hyperparams):
     )
 
 
-    model.fit(x_train, y_train)
+    pipeline.fit(x_train, y_train)
 
-    y_pred = model.predict(x_test)
+    y_pred = pipeline.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
 
-    return model, acc
+    return pipeline, acc
 
 
 def train_svm_regressor(x, y, hyperparams):
@@ -175,7 +185,10 @@ def train_svm_regressor(x, y, hyperparams):
         "degree": hyperparams.get("degree", 3),
     }
 
-    model = SVC(**params)
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", LogisticRegression(**params))
+    ])
 
     x_train, x_test, y_train, y_test = train_test_split(
         x,
@@ -184,10 +197,12 @@ def train_svm_regressor(x, y, hyperparams):
         random_state=42,
     )
 
-    y_pred = model.predict(x_test)
+    pipeline.fit(x_train, y_train)
+
+    y_pred = pipeline.predict(x_test)
     r2 = r2_score(y_test, y_pred)
 
-    return model, r2
+    return pipeline, r2
 
 # Cat cols is no longer = None, make sure there are no errors
 def train_catboost_classifier(x, y, categorical_cols, hyperparams):
