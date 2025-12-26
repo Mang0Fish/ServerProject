@@ -7,7 +7,8 @@ import pandas as pd
 from io import StringIO
 from ml.training import train_catboost_classifier, train_catboost_regressor, train_random_forest_classifier, \
     train_random_forest_regressor, train_svm_classifier, train_svm_regressor, train_linear_reg, train_logistic_reg
-
+import json
+import os
 
 
 class ModelEnum(str, Enum):
@@ -29,8 +30,45 @@ def save_model(model):
     return path
 
 
+def save_metadata(model_path, metadata):
+    meta_path = model_path.replace(".pkl", ".meta.json")
+
+    try:
+        with open(meta_path, "w") as f:
+            json.dump(metadata, f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save metadata: {str(e)}")
+
+
+def load_metadata(model_path):
+    meta_path = model_path.replace(".pkl", ".meta.json")
+    if not os.path.exists(meta_path):
+        raise HTTPException(status_code=404, detail="Model does not exist")
+
+    try:
+        with open(meta_path) as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load model metadata: {str(e)}")
+
+
 def load_model(path):
     return joblib.load(path)
+
+
+def validate_features(input_data, expected_features):
+    input_features = set(input_data.keys())
+    expected_features = set(expected_features)
+
+    missing = expected_features - input_features
+    extra = input_features - expected_features
+
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing features: {missing}")
+
+    if extra:
+        raise HTTPException(status_code=400, detail=f"Unexpected features: {extra}")
+
 
 
 def verify_file(data, label_column):
@@ -105,12 +143,25 @@ def train_model(df, label_column, model_type, hyperparams):
         case ModelEnum.logisticregression:
             model, score = train_logistic_reg(x, y, hyperparams, cat_cols, num_cols)
         case _:
-            raise HTTPException(400, f"Unknown model type: {model_type}")
+            raise HTTPException(422, f"Unknown model type: {model_type}")
 
     if model is None or score is None:
         raise HTTPException(500, "Model training failed")
 
+    metadata = {
+        "model_type": model_type.value,
+        "problem_type": problem_type,
+        "label_column": label_column,
+        "features": x.columns.tolist(),
+        "categorical_features": cat_cols,
+        "numerical_features": num_cols,
+        "metrics": {
+            "primary_score":score, # only score for now, will be more
+        }
+    }
+
     saved_path = save_model(model)
+    save_metadata(saved_path, metadata)
 
     return {
         "msg": "Training completed",

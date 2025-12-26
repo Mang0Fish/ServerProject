@@ -11,7 +11,7 @@ from security import create_access_token, create_refresh_token
 from routers.token import generate_tokens_for_user
 import pandas as pd
 from io import StringIO
-from ml.utils import  load_model, verify_file, train_model, ModelEnum
+from ml.utils import load_model, verify_file, train_model, ModelEnum, load_metadata, validate_features
 from typing import Optional, Dict, Any
 import json
 
@@ -84,6 +84,14 @@ async def train_csv(file: UploadFile = File(...),
 
 @app.post("/ml/predict")
 def predict(request: PredictRequest):
+    metadata = load_metadata(request.model_path)
+
+    validate_features(
+        input_data=request.input,
+        expected_features=metadata["features"]
+    )
+
+
     # model/pipeline loading
     try:
         model = load_model(request.model_path)
@@ -109,16 +117,6 @@ def predict(request: PredictRequest):
         response["probabilities"] = probs[0].tolist()
 
     return response
-
-
-# @app.post("/ml/predict")
-# def predict(model_path: str = Body(...), input_data: list = Body(...)):
-#     model = load_model(model_path)
-#
-#     # model expects a 2D array → wrap the list in another list
-#     prediction = model.predict([input_data])
-#
-#     return {"prediction": int(prediction[0])}
 
 
 @app.post("/users/")
