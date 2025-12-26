@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, StrictInt
-
+from typing import Dict, Any
 
 class User(BaseModel):
     username: str
@@ -26,3 +26,8 @@ class Payment(BaseModel):
 
 class RefreshIn(BaseModel):
     refresh_token: str
+
+
+class PredictRequest(BaseModel):
+    model_path: str
+    input: Dict[str, Any]

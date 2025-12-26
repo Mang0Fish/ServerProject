@@ -9,6 +9,7 @@ from ml.training import train_catboost_classifier, train_catboost_regressor, tra
     train_random_forest_regressor, train_svm_classifier, train_svm_regressor, train_linear_reg, train_logistic_reg
 
 
+
 class ModelEnum(str, Enum):
     catboost = "catboost"
     randomforest = "randomforest"
@@ -58,7 +59,7 @@ def verify_file(data, label_column):
     if df[label_column].nunique() < 2:
         raise HTTPException(400, "The label column must contain at least 2 unique values")
 
-    if len(df) < 20:
+    if len(df) < 10:
         raise HTTPException(400, "The dataset is too small to train the model")
 
     return df
@@ -71,6 +72,7 @@ def train_model(df, label_column, model_type, hyperparams):
     x = df.drop(columns=label_column)
 
     cat_cols = [i for i, col in enumerate(x.columns) if x[col].dtype == "object"]
+    num_cols = [i for i, col in enumerate(x.columns) if x[col].dtype != "object"]
 
     if y.dtype == "object":
         problem_type = "classification"
@@ -90,18 +92,18 @@ def train_model(df, label_column, model_type, hyperparams):
                 model, score = train_catboost_regressor(x, y, cat_cols, hyperparams)
         case ModelEnum.randomforest:
             if problem_type == "classification":
-                model, score = train_random_forest_classifier(x, y, hyperparams)
+                model, score = train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols)
             else:
-                model, score = train_random_forest_regressor(x, y, hyperparams)
+                model, score = train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.svm:
             if problem_type == "classification":
-                model, score = train_svm_classifier(x, y, hyperparams)
+                model, score = train_svm_classifier(x, y, hyperparams, cat_cols, num_cols)
             else:
-                model, score = train_svm_regressor(x, y, hyperparams)
+                model, score = train_svm_regressor(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.linearregression:
-            model, score = train_linear_reg(x, y, hyperparams)
+            model, score = train_linear_reg(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.logisticregression:
-            model, score = train_logistic_reg(x, y, hyperparams)
+            model, score = train_logistic_reg(x, y, hyperparams, cat_cols, num_cols)
         case _:
             raise HTTPException(400, f"Unknown model type: {model_type}")
 
@@ -120,3 +122,4 @@ def train_model(df, label_column, model_type, hyperparams):
         "score": score,
         "model": saved_path
     }
+

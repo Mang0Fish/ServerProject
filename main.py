@@ -11,8 +11,9 @@ from security import create_access_token, create_refresh_token
 from routers.token import generate_tokens_for_user
 import pandas as pd
 from io import StringIO
-from ml.training import train_logistic_reg, train_catboost_classifier, train_catboost_regressor
-from ml.utils import save_model, load_model, verify_file, train_model, ModelEnum
+from ml.utils import  load_model, verify_file, train_model, ModelEnum
+from typing import Optional, Dict, Any
+import json
 
 
 """
@@ -59,7 +60,8 @@ def root(username: str, password: str):
 async def train_csv(file: UploadFile = File(...),
                     label_column: str = Form(...),
                     model_type: ModelEnum = Query(..., description="Select the model"),
-                    hyperparams :dict = Body(default={})):
+                    hyperparams: Optional[str] = Form(None)
+                    ):
 
     # Step 1: read csv file into a DataFrame
     if not file.filename.endswith(".csv"):
@@ -68,18 +70,55 @@ async def train_csv(file: UploadFile = File(...),
     data = await file.read()
     df = verify_file(data, label_column)
 
+    if hyperparams:
+        try:
+            hyperparams = json.loads(hyperparams)
+        except json.JSONDecodeError:
+            raise HTTPException(400, "hyperparams must be a valid JSON")
+    else:
+        hyperparams = {}
+
     model_trained = train_model(df, label_column, model_type, hyperparams)
     return model_trained
 
 
 @app.post("/ml/predict")
-def predict(model_path: str = Body(...), input_data: list = Body(...)):
-    model = load_model(model_path)
+def predict(request: PredictRequest):
+    # model/pipeline loading
+    try:
+        model = load_model(request.model_path)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not load model")
 
-    # model expects a 2D array → wrap the list in another list
-    prediction = model.predict([input_data])
+    # converting input to df
+    try:
+        df = pd.DataFrame([request.input])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid input format")
 
-    return {"prediction": int(prediction[0])}
+    # predicting
+    try:
+        prediction = model.predict(df)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
+
+    response = {"prediction": prediction[0].item()} # fixed the iterable error
+
+    if hasattr(model, "predict_proba"):
+        probs = model.predict_proba(df)
+        response["probabilities"] = probs[0].tolist()
+
+    return response
+
+
+# @app.post("/ml/predict")
+# def predict(model_path: str = Body(...), input_data: list = Body(...)):
+#     model = load_model(model_path)
+#
+#     # model expects a 2D array → wrap the list in another list
+#     prediction = model.predict([input_data])
+#
+#     return {"prediction": int(prediction[0])}
 
 
 @app.post("/users/")

@@ -7,6 +7,7 @@ from sklearn.svm import SVC, SVR
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from ml.preprocessing import build_preprocessor
 
 """
 accuracy score, F1, precision, recall = classification
@@ -19,14 +20,16 @@ add to classification train_test_split: stratify = y
 """
 
 
-def train_linear_reg(x, y, hyperparams):
+def train_linear_reg(x, y, hyperparams, cat_cols, num_cols):
     params = {
         "fit_intercept": hyperparams.get("fit_intercept", True),
         "positive" : hyperparams.get("positive", False),
     }
 
+    preprocessor = build_preprocessor(cat_cols, num_cols, True)
+
     pipeline = Pipeline([
-        ("scaler", StandardScaler()),
+        ("preprocessor", preprocessor),
         ("model", LinearRegression(**params))
     ])
 
@@ -49,7 +52,7 @@ def train_linear_reg(x, y, hyperparams):
     return pipeline, r2
 
 
-def train_logistic_reg(x, y, hyperparams):
+def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
     params = {
         "max_iter": hyperparams.get("max_iter", 1000),
         "C": hyperparams.get("C", 1.0),
@@ -57,8 +60,10 @@ def train_logistic_reg(x, y, hyperparams):
         "penalty": hyperparams.get("penalty", "l2"),
     }
 
+    preprocessor = build_preprocessor(cat_cols, num_cols, True)
+
     pipeline = Pipeline([
-        ("scaler", StandardScaler()),
+        ("preprocessor", preprocessor),
         ("model", LogisticRegression(**params))
     ])
 
@@ -82,7 +87,7 @@ def train_logistic_reg(x, y, hyperparams):
     return pipeline, acc
 
 
-def train_random_forest_classifier(x, y, hyperparams):
+def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
     params = {
         "n_estimators": hyperparams.get("n_estimators", 30),
         "max_depth": hyperparams.get("max_depth", None),
@@ -92,7 +97,13 @@ def train_random_forest_classifier(x, y, hyperparams):
         "min_samples_leaf": hyperparams.get("min_samples_leaf", 1),
     }
     # model type
-    model = RandomForestClassifier(**params)
+
+    preprocessor = build_preprocessor(cat_cols, num_cols, False)
+
+    pipeline = Pipeline([
+        ("preprocessor", preprocessor),
+        ("model", RandomForestClassifier(**params))
+    ])
 
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
@@ -104,17 +115,17 @@ def train_random_forest_classifier(x, y, hyperparams):
     )
 
     # training
-    model.fit(x_train, y_train)
+    pipeline.fit(x_train, y_train)
 
     #
-    y_pred = model.predict(x_test)
+    y_pred = pipeline.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
 
     # return model and accuracy
-    return model, acc
+    return pipeline, acc
 
 
-def train_random_forest_regressor(x, y, hyperparams):
+def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
     params = {
         "n_estimators": hyperparams.get("n_estimators", 30),
         "max_depth": hyperparams.get("max_depth", None),
@@ -125,7 +136,12 @@ def train_random_forest_regressor(x, y, hyperparams):
     }
 
     # model type
-    model = RandomForestRegressor(**params)
+    preprocessor = build_preprocessor(cat_cols, num_cols, False)
+
+    pipeline = Pipeline([
+        ("preprocessor", preprocessor),
+        ("model", RandomForestRegressor(**params))
+    ])
 
     # train test
     x_train, x_test, y_train, y_test = train_test_split(
@@ -136,17 +152,17 @@ def train_random_forest_regressor(x, y, hyperparams):
     )
 
     # training
-    model.fit(x_train, y_train)
+    pipeline.fit(x_train, y_train)
 
     #
-    y_pred = model.predict(x_test)
+    y_pred = pipeline.predict(x_test)
     r2 = r2_score(y_test, y_pred)
 
     # return model and accuracy
-    return model, r2
+    return pipeline, r2
 
 
-def train_svm_classifier(x, y, hyperparams):
+def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
     params = {
         "C": hyperparams.get("C", 1.0),
         "kernel": hyperparams.get("kernel", "rbf"),
@@ -155,9 +171,11 @@ def train_svm_classifier(x, y, hyperparams):
         "probability": True,
     }
 
+    preprocessor = build_preprocessor(cat_cols, num_cols, True)
+
     pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", LogisticRegression(**params))
+        ("preprocessor", preprocessor),
+        ("model", SVC(**params))
     ])
 
     x_train, x_test, y_train, y_test = train_test_split(
@@ -177,7 +195,7 @@ def train_svm_classifier(x, y, hyperparams):
     return pipeline, acc
 
 
-def train_svm_regressor(x, y, hyperparams):
+def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
     params = {
         "C": hyperparams.get("C", 1.0),
         "kernel": hyperparams.get("kernel", "rbf"),
@@ -185,9 +203,11 @@ def train_svm_regressor(x, y, hyperparams):
         "degree": hyperparams.get("degree", 3),
     }
 
+    preprocessor = build_preprocessor(cat_cols, num_cols, True)
+
     pipeline = Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", LogisticRegression(**params))
+        ("preprocessor", preprocessor),
+        ("model", SVR(**params))
     ])
 
     x_train, x_test, y_train, y_test = train_test_split(
