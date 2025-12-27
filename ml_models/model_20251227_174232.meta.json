@@ -1,0 +1,1 @@
+{"model_type": "catboost", "problem_type": "classification", "label_column": "income", "features": ["age", "education_num", "hours_per_week", "capital_gain", "workclass", "marital_status", "occupation"], "categorical_features": [4, 5, 6], "numerical_features": [0, 1, 2, 3], "metrics": {"primary_score": 0.6666666666666666}}

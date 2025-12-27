@@ -56,19 +56,29 @@ def load_model(path):
     return joblib.load(path)
 
 
-def validate_features(input_data, expected_features):
+def validate_features(input_data, expected_data):
     input_features = set(input_data.keys())
-    expected_features = set(expected_features)
+    expected_features = set(expected_data.keys())
 
     missing = expected_features - input_features
     extra = input_features - expected_features
 
     if missing:
-        raise HTTPException(status_code=400, detail=f"Missing features: {missing}")
+        raise HTTPException(status_code=422, detail=f"Missing features: {missing}")
 
     if extra:
-        raise HTTPException(status_code=400, detail=f"Unexpected features: {extra}")
+        raise HTTPException(status_code=422, detail=f"Unexpected features: {extra}")
 
+    for feature, typ in expected_data.items():
+        value = input_data[feature]
+
+        if typ == "numeric":
+            if not isinstance(value, (int, float)):
+                raise HTTPException(status_code=422, detail=f"Feature '{feature}' must be numeric")
+
+        elif typ == "categorical":
+            if not isinstance(value, str):
+                raise HTTPException(status_code=422, detail=f"Feature '{feature}' must be a string")
 
 
 def verify_file(data, label_column):
@@ -109,8 +119,13 @@ def train_model(df, label_column, model_type, hyperparams):
     y = df[label_column]
     x = df.drop(columns=label_column)
 
-    cat_cols = [i for i, col in enumerate(x.columns) if x[col].dtype == "object"]
-    num_cols = [i for i, col in enumerate(x.columns) if x[col].dtype != "object"]
+    cat_cols = [col for col in x.columns if x[col].dtype == "object"]
+    num_cols = [col for col in x.columns if x[col].dtype != "object"]
+
+    feature_types = {
+        col: "categorical" if col in cat_cols else "numeric"
+        for col in x.columns
+    }
 
     if y.dtype == "object":
         problem_type = "classification"
@@ -153,6 +168,7 @@ def train_model(df, label_column, model_type, hyperparams):
         "problem_type": problem_type,
         "label_column": label_column,
         "features": x.columns.tolist(),
+        "feature_types": feature_types,
         "categorical_features": cat_cols,
         "numerical_features": num_cols,
         "metrics": {

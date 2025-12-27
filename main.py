@@ -88,7 +88,7 @@ def predict(request: PredictRequest):
 
     validate_features(
         input_data=request.input,
-        expected_features=metadata["features"]
+        expected_data=metadata["feature_types"]
     )
 
 
