@@ -4,11 +4,10 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (accuracy_score, r2_score, precision_score, recall_score, f1_score,
                              mean_absolute_error, mean_squared_error, root_mean_squared_error,
-                             confusion_matrix)
+                             confusion_matrix, roc_auc_score, roc_curve)
 from sklearn.svm import SVC, SVR
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 from ml.preprocessing import build_preprocessor
 
 """
@@ -21,14 +20,24 @@ add to classification train_test_split: stratify = y
 
 """
 
-def classifier_evaluation(y_test, y_pred):
+def classifier_evaluation(y_test, y_pred, y_prob=None):
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    cm = confusion_matrix(y_test, y_pred)
-    return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1, "confusion matrix": cm}
+    precision = precision_score(y_test, y_pred, zero_division=0)
+    recall = recall_score(y_test, y_pred, zero_division=0)
+    f1 = f1_score(y_test, y_pred, zero_division=0)
+    cm = confusion_matrix(y_test, y_pred).tolist()
 
+    metrics = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1, "confusion matrix": cm}
+
+    if y_prob is not None and len(set(y_test)) > 1:
+        metrics["roc_auc"] = roc_auc_score(y_test, y_prob)
+        fpr, tpr, _ = roc_curve(y_test, y_prob)
+        metrics["roc_curve"] = {
+            "fpr": fpr.tolist(),
+            "tpr": tpr.tolist(),
+        }
+
+    return metrics
 
 def regressor_evaluation(y_test, y_pred):
     r2 = r2_score(y_test, y_pred)
@@ -101,8 +110,8 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
 
     # evaluation
     y_pred = pipeline.predict(x_test)
-
-    metrics = classifier_evaluation(y_test, y_pred)
+    y_prob = pipeline.predict_proba(x_test)[:, 1]
+    metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return pipeline, metrics, used_hyperparams
 
@@ -139,8 +148,8 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
 
     # training
     y_pred = pipeline.predict(x_test)
-
-    metrics = classifier_evaluation(y_test, y_pred)
+    y_prob = pipeline.predict_proba(x_test)[:, 1]
+    metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return pipeline, metrics, used_hyperparams
 
@@ -211,8 +220,9 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
     pipeline.fit(x_train, y_train)
 
     y_pred = pipeline.predict(x_test)
-
-    metrics = classifier_evaluation(y_test, y_pred)
+    # In case somehow probability = False
+    y_prob = pipeline.predict_proba(x_test)[:, 1] if hasattr(pipeline, "predict_proba") else None
+    metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return pipeline, metrics, used_hyperparams
 
@@ -279,8 +289,8 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
     )
 
     y_pred = model.predict(x_test)
-
-    metrics = classifier_evaluation(y_test, y_pred)
+    y_prob = model.predict_proba(x_test)[:, 1]
+    metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return model, metrics, used_hyperparams
 
