@@ -2,7 +2,7 @@ from sklearn.datasets import load_digits
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, r2_score
+from sklearn.metrics import accuracy_score, r2_score, precision_score, recall_score, f1_score, mean_absolute_error, mean_squared_error, root_mean_squared_error
 from sklearn.svm import SVC, SVR
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
@@ -47,9 +47,19 @@ def train_linear_reg(x, y, hyperparams, cat_cols, num_cols):
     # evaluation
     y_pred = pipeline.predict(x_test)
     r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = root_mean_squared_error(y_test, y_pred)
 
-    # return the model and accuracy
-    return pipeline, r2
+    metrics = {
+        "r2": r2,
+        "mae": mae,
+        "mse": mse,
+        "rmse": rmse,
+    }
+
+    # return the model and metrics
+    return pipeline, metrics
 
 
 def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
@@ -82,9 +92,19 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
     # evaluation
     y_pred = pipeline.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
-    # returns the pipeline and accuracy
-    return pipeline, acc
+    metrics = {
+        "accuracy": acc,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1
+    }
+
+    # returns the pipeline and metrics
+    return pipeline, metrics
 
 
 def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
@@ -117,12 +137,22 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
     # training
     pipeline.fit(x_train, y_train)
 
-    #
+    # training
     y_pred = pipeline.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
-    # return model and accuracy
-    return pipeline, acc
+    metrics = {
+        "accuracy": acc,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1
+    }
+
+    # returns the pipeline and metrics
+    return pipeline, metrics
 
 
 def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
@@ -157,9 +187,19 @@ def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
     #
     y_pred = pipeline.predict(x_test)
     r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = root_mean_squared_error(y_test, y_pred)
 
-    # return model and accuracy
-    return pipeline, r2
+    metrics = {
+        "r2": r2,
+        "mae": mae,
+        "mse": mse,
+        "rmse": rmse,
+    }
+
+    # return the model and metrics
+    return pipeline, metrics
 
 
 def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
@@ -191,8 +231,19 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
 
     y_pred = pipeline.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
-    return pipeline, acc
+    metrics = {
+        "accuracy": acc,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1
+    }
+
+    # returns the pipeline and metrics
+    return pipeline, metrics
 
 
 def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
@@ -221,8 +272,19 @@ def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
 
     y_pred = pipeline.predict(x_test)
     r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = root_mean_squared_error(y_test, y_pred)
 
-    return pipeline, r2
+    metrics = {
+        "r2": r2,
+        "mae": mae,
+        "mse": mse,
+        "rmse": rmse,
+    }
+
+    # return the model and metrics
+    return pipeline, metrics
 
 # Cat cols is no longer = None, make sure there are no errors
 def train_catboost_classifier(x, y, categorical_cols, hyperparams):
@@ -255,8 +317,18 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
 
     y_pred = model.predict(x_test)
     acc = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
-    return model, acc
+    metrics = {
+        "accuracy": acc,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1
+    }
+
+    return model, metrics
 
 
 def train_catboost_regressor(x, y, categorical_cols, hyperparams):
@@ -288,5 +360,16 @@ def train_catboost_regressor(x, y, categorical_cols, hyperparams):
 
     y_pred = model.predict(x_test)
     r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = root_mean_squared_error(y_test, y_pred)
 
-    return model, r2
+    metrics = {
+        "r2": r2,
+        "mae": mae,
+        "mse": mse,
+        "rmse": rmse,
+    }
+
+    # return the model and metrics
+    return model, metrics

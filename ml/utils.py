@@ -135,32 +135,32 @@ def train_model(df, label_column, model_type, hyperparams):
         problem_type = "regression"
 
     model = None
-    score = None
+    metrics = None
 
     match model_type:
         case ModelEnum.catboost:
             if problem_type == "classification":
-                model, score = train_catboost_classifier(x, y, cat_cols, hyperparams)
+                model, metrics = train_catboost_classifier(x, y, cat_cols, hyperparams)
             else:
-                model, score = train_catboost_regressor(x, y, cat_cols, hyperparams)
+                model, metrics = train_catboost_regressor(x, y, cat_cols, hyperparams)
         case ModelEnum.randomforest:
             if problem_type == "classification":
-                model, score = train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics = train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols)
             else:
-                model, score = train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics = train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.svm:
             if problem_type == "classification":
-                model, score = train_svm_classifier(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics = train_svm_classifier(x, y, hyperparams, cat_cols, num_cols)
             else:
-                model, score = train_svm_regressor(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics = train_svm_regressor(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.linearregression:
-            model, score = train_linear_reg(x, y, hyperparams, cat_cols, num_cols)
+            model, metrics = train_linear_reg(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.logisticregression:
-            model, score = train_logistic_reg(x, y, hyperparams, cat_cols, num_cols)
+            model, metrics = train_logistic_reg(x, y, hyperparams, cat_cols, num_cols)
         case _:
             raise HTTPException(422, f"Unknown model type: {model_type}")
 
-    if model is None or score is None:
+    if model is None or metrics is None:
         raise HTTPException(500, "Model training failed")
 
     metadata = {
@@ -171,9 +171,7 @@ def train_model(df, label_column, model_type, hyperparams):
         "feature_types": feature_types,
         "categorical_features": cat_cols,
         "numerical_features": num_cols,
-        "metrics": {
-            "primary_score":score, # only score for now, will be more
-        }
+        "metrics": metrics
     }
 
     saved_path = save_model(model)
@@ -186,7 +184,7 @@ def train_model(df, label_column, model_type, hyperparams):
         "categorical_columns": cat_cols,
         "features": x.columns.tolist(),
         "label": label_column,
-        "score": score,
+        "score": metrics,
         "model": saved_path
     }
 
