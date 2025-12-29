@@ -25,6 +25,7 @@ def train_linear_reg(x, y, hyperparams, cat_cols, num_cols):
         "fit_intercept": hyperparams.get("fit_intercept", True),
         "positive" : hyperparams.get("positive", False),
     }
+    used_hyperparams = params.copy()
 
     preprocessor = build_preprocessor(cat_cols, num_cols, True)
 
@@ -59,7 +60,7 @@ def train_linear_reg(x, y, hyperparams, cat_cols, num_cols):
     }
 
     # return the model and metrics
-    return pipeline, metrics
+    return pipeline, metrics, hyperparams
 
 
 def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
@@ -69,6 +70,7 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
         "solver": hyperparams.get("solver", "lbfgs"),
         "penalty": hyperparams.get("penalty", "l2"),
     }
+    used_hyperparams = params.copy()
 
     preprocessor = build_preprocessor(cat_cols, num_cols, True)
 
@@ -104,7 +106,7 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
     }
 
     # returns the pipeline and metrics
-    return pipeline, metrics
+    return pipeline, metrics, used_hyperparams
 
 
 def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
@@ -116,7 +118,7 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
         "min_samples_split": hyperparams.get("min_samples_split", 2),
         "min_samples_leaf": hyperparams.get("min_samples_leaf", 1),
     }
-    # model type
+    used_hyperparams = params.copy()
 
     preprocessor = build_preprocessor(cat_cols, num_cols, False)
 
@@ -151,8 +153,8 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
         "f1_score": f1
     }
 
-    # returns the pipeline and metrics
-    return pipeline, metrics
+
+    return pipeline, metrics, used_hyperparams
 
 
 def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
@@ -164,8 +166,8 @@ def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
         "min_samples_split": hyperparams.get("min_samples_split", 2),
         "min_samples_leaf": hyperparams.get("min_samples_leaf", 1),
     }
+    used_hyperparams = params.copy()
 
-    # model type
     preprocessor = build_preprocessor(cat_cols, num_cols, False)
 
     pipeline = Pipeline([
@@ -198,8 +200,8 @@ def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
         "rmse": rmse,
     }
 
-    # return the model and metrics
-    return pipeline, metrics
+
+    return pipeline, metrics, used_hyperparams
 
 
 def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
@@ -210,6 +212,7 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
         "degree": hyperparams.get("degree", 3),
         "probability": True,
     }
+    used_hyperparams = params.copy()
 
     preprocessor = build_preprocessor(cat_cols, num_cols, True)
 
@@ -243,7 +246,7 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
     }
 
     # returns the pipeline and metrics
-    return pipeline, metrics
+    return pipeline, metrics, used_hyperparams
 
 
 def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
@@ -253,6 +256,7 @@ def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
         "gamma": hyperparams.get("gamma", "scale"),
         "degree": hyperparams.get("degree", 3),
     }
+    used_hyperparams = params.copy()
 
     preprocessor = build_preprocessor(cat_cols, num_cols, True)
 
@@ -284,7 +288,7 @@ def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
     }
 
     # return the model and metrics
-    return pipeline, metrics
+    return pipeline, metrics, used_hyperparams
 
 # Cat cols is no longer = None, make sure there are no errors
 def train_catboost_classifier(x, y, categorical_cols, hyperparams):
@@ -297,6 +301,7 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
         "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
         "verbose": False,
     }
+    used_hyperparams = params.copy()
 
     model = CatBoostClassifier(**params)
 
@@ -328,7 +333,7 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
         "f1_score": f1
     }
 
-    return model, metrics
+    return model, metrics, used_hyperparams
 
 
 def train_catboost_regressor(x, y, categorical_cols, hyperparams):
@@ -341,6 +346,7 @@ def train_catboost_regressor(x, y, categorical_cols, hyperparams):
         "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
         "verbose": False,
     }
+    used_hyperparams = params.copy()
 
     model = CatBoostRegressor(**params)
 
@@ -371,5 +377,4 @@ def train_catboost_regressor(x, y, categorical_cols, hyperparams):
         "rmse": rmse,
     }
 
-    # return the model and metrics
-    return model, metrics
+    return model, metrics, used_hyperparams

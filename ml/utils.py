@@ -136,27 +136,28 @@ def train_model(df, label_column, model_type, hyperparams):
 
     model = None
     metrics = None
+    used_hyperparams = {}
 
     match model_type:
         case ModelEnum.catboost:
             if problem_type == "classification":
-                model, metrics = train_catboost_classifier(x, y, cat_cols, hyperparams)
+                model, metrics, used_hyperparams = train_catboost_classifier(x, y, cat_cols, hyperparams)
             else:
-                model, metrics = train_catboost_regressor(x, y, cat_cols, hyperparams)
+                model, metrics, used_hyperparams = train_catboost_regressor(x, y, cat_cols, hyperparams)
         case ModelEnum.randomforest:
             if problem_type == "classification":
-                model, metrics = train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics, used_hyperparams = train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols)
             else:
-                model, metrics = train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics, used_hyperparams = train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.svm:
             if problem_type == "classification":
-                model, metrics = train_svm_classifier(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics, used_hyperparams = train_svm_classifier(x, y, hyperparams, cat_cols, num_cols)
             else:
-                model, metrics = train_svm_regressor(x, y, hyperparams, cat_cols, num_cols)
+                model, metrics, used_hyperparams = train_svm_regressor(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.linearregression:
-            model, metrics = train_linear_reg(x, y, hyperparams, cat_cols, num_cols)
+            model, metrics, used_hyperparams = train_linear_reg(x, y, hyperparams, cat_cols, num_cols)
         case ModelEnum.logisticregression:
-            model, metrics = train_logistic_reg(x, y, hyperparams, cat_cols, num_cols)
+            model, metrics, used_hyperparams = train_logistic_reg(x, y, hyperparams, cat_cols, num_cols)
         case _:
             raise HTTPException(422, f"Unknown model type: {model_type}")
 
@@ -171,7 +172,8 @@ def train_model(df, label_column, model_type, hyperparams):
         "feature_types": feature_types,
         "categorical_features": cat_cols,
         "numerical_features": num_cols,
-        "metrics": metrics
+        "metrics": metrics,
+        "hyperparams": used_hyperparams
     }
 
     saved_path = save_model(model)
