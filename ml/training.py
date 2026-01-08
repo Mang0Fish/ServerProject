@@ -27,9 +27,9 @@ def classifier_evaluation(y_test, y_pred, y_prob=None):
     f1 = f1_score(y_test, y_pred, zero_division=0)
     cm = confusion_matrix(y_test, y_pred).tolist()
 
-    metrics = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1, "confusion matrix": cm}
+    metrics = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1, "confusion_matrix": cm}
 
-    if y_prob is not None and len(set(y_test)) > 1:
+    if y_prob is not None and len(set(y_test)) == 2:
         metrics["roc_auc"] = roc_auc_score(y_test, y_prob)
         fpr, tpr, _ = roc_curve(y_test, y_prob)
         metrics["roc_curve"] = {
@@ -110,7 +110,13 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
 
     # evaluation
     y_pred = pipeline.predict(x_test)
-    y_prob = pipeline.predict_proba(x_test)[:, 1]
+
+    y_prob = None
+    if len(set(y_test)) == 2:
+        probs = pipeline.predict_proba(x_test)
+        if probs is not None and probs.shape[1] == 2:
+            y_prob = probs[:, 1]
+
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return pipeline, metrics, used_hyperparams
@@ -148,7 +154,13 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
 
     # training
     y_pred = pipeline.predict(x_test)
-    y_prob = pipeline.predict_proba(x_test)[:, 1]
+
+    y_prob = None
+    if len(set(y_test)) == 2:
+        probs = pipeline.predict_proba(x_test)
+        if probs is not None and probs.shape[1] == 2:
+            y_prob = probs[:, 1]
+
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return pipeline, metrics, used_hyperparams
@@ -221,7 +233,13 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
 
     y_pred = pipeline.predict(x_test)
     # In case somehow probability = False
-    y_prob = pipeline.predict_proba(x_test)[:, 1] if hasattr(pipeline, "predict_proba") else None
+
+    y_prob = None
+    if len(set(y_test)) == 2:
+        probs = pipeline.predict_proba(x_test)
+        if probs is not None and probs.shape[1] == 2:
+            y_prob = probs[:, 1]
+
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return pipeline, metrics, used_hyperparams
@@ -258,7 +276,7 @@ def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
 
     return pipeline, metrics, used_hyperparams
 
-# Cat cols is no longer = None, make sure there are no errors
+
 def train_catboost_classifier(x, y, categorical_cols, hyperparams):
     params = {
         "iterations": hyperparams.get("iterations", 500),
@@ -289,7 +307,13 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
     )
 
     y_pred = model.predict(x_test)
-    y_prob = model.predict_proba(x_test)[:, 1]
+
+    y_prob = None
+    if len(set(y_test)) == 2:
+        probs = model.predict_proba(x_test)
+        if probs is not None and probs.shape[1] == 2:
+            y_prob = probs[:, 1]
+
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
     return model, metrics, used_hyperparams

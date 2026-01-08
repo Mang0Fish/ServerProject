@@ -9,6 +9,7 @@ from ml.training import train_catboost_classifier, train_catboost_regressor, tra
     train_random_forest_regressor, train_svm_classifier, train_svm_regressor, train_linear_reg, train_logistic_reg
 import json
 import os
+from pandas.api.types import is_numeric_dtype, is_categorical_dtype, is_string_dtype
 
 
 class ModelEnum(str, Enum):
@@ -119,8 +120,12 @@ def train_model(df, label_column, model_type, hyperparams):
     y = df[label_column]
     x = df.drop(columns=label_column)
 
-    cat_cols = [col for col in x.columns if x[col].dtype == "object"]
-    num_cols = [col for col in x.columns if x[col].dtype != "object"]
+    # cat_cols = [col for col in x.columns if x[col].dtype == "object"]
+    # num_cols = [col for col in x.columns if x[col].dtype != "object"]
+
+    num_cols = [col for col in x.columns if is_numeric_dtype(x[col])]
+    cat_cols = [col for col in x.columns if x[col] not in set(num_cols)]
+
 
     feature_types = {
         col: "categorical" if col in cat_cols else "numeric"
