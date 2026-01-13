@@ -9,6 +9,7 @@ from sklearn.svm import SVC, SVR
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
 from ml.preprocessing import build_preprocessor
+from ml.validation import cross_validate_classifier, cross_validate_catboost_classifier
 
 """
 accuracy score, F1, precision, recall = classification
@@ -119,6 +120,11 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
 
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
+    # cross validation
+    cv = cross_validate_classifier(pipeline, x, y)
+
+    metrics["cv"] = cv
+
     return pipeline, metrics, used_hyperparams
 
 
@@ -162,6 +168,11 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
             y_prob = probs[:, 1]
 
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
+
+    # cross validation
+    cv = cross_validate_classifier(pipeline, x, y)
+
+    metrics["cv"] = cv
 
     return pipeline, metrics, used_hyperparams
 
@@ -242,6 +253,11 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
 
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
+    # cross validation
+    cv = cross_validate_classifier(pipeline, x, y)
+
+    metrics["cv"] = cv
+
     return pipeline, metrics, used_hyperparams
 
 
@@ -277,7 +293,7 @@ def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
     return pipeline, metrics, used_hyperparams
 
 
-def train_catboost_classifier(x, y, categorical_cols, hyperparams):
+def train_catboost_classifier(x, y, cat_cols, hyperparams):
     params = {
         "iterations": hyperparams.get("iterations", 500),
         "learning_rate": hyperparams.get("learning_rate", 0.05),
@@ -302,7 +318,7 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
     model.fit(
         x_train, y_train,
         eval_set=(x_test, y_test),
-        cat_features=categorical_cols,
+        cat_features=cat_cols,
         use_best_model = True
     )
 
@@ -315,6 +331,9 @@ def train_catboost_classifier(x, y, categorical_cols, hyperparams):
             y_prob = probs[:, 1]
 
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
+
+    cv = cross_validate_catboost_classifier(x, y, cat_cols, used_hyperparams)
+    metrics["cv"] = cv
 
     return model, metrics, used_hyperparams
 

@@ -124,7 +124,7 @@ def train_model(df, label_column, model_type, hyperparams):
     # num_cols = [col for col in x.columns if x[col].dtype != "object"]
 
     num_cols = [col for col in x.columns if is_numeric_dtype(x[col])]
-    cat_cols = [col for col in x.columns if x[col] not in set(num_cols)]
+    cat_cols = [col for col in x.columns if col not in set(num_cols)]
 
 
     feature_types = {
