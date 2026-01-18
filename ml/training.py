@@ -9,7 +9,7 @@ from sklearn.svm import SVC, SVR
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
 from ml.preprocessing import build_preprocessor
-from ml.validation import cross_validate_classifier, cross_validate_catboost_classifier
+from ml.validation import cross_validate_classifier, cross_validate_catboost, cross_validate_regressor
 
 """
 accuracy score, F1, precision, recall = classification
@@ -77,6 +77,11 @@ def train_linear_reg(x, y, hyperparams, cat_cols, num_cols):
     y_pred = pipeline.predict(x_test)
 
     metrics = regressor_evaluation(y_test, y_pred)
+
+    # cross validation
+    cv = cross_validate_regressor(pipeline, x, y)
+
+    metrics["cv"] = cv
 
     return pipeline, metrics, used_hyperparams
 
@@ -211,6 +216,11 @@ def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
 
     metrics = regressor_evaluation(y_test, y_pred)
 
+    # cross validation
+    cv = cross_validate_regressor(pipeline, x, y)
+
+    metrics["cv"] = cv
+
     return pipeline, metrics, used_hyperparams
 
 
@@ -290,6 +300,11 @@ def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
 
     metrics = regressor_evaluation(y_test, y_pred)
 
+    # cross validation
+    cv = cross_validate_regressor(pipeline, x, y)
+
+    metrics["cv"] = cv
+
     return pipeline, metrics, used_hyperparams
 
 
@@ -301,7 +316,7 @@ def train_catboost_classifier(x, y, cat_cols, hyperparams):
         "loss_function": hyperparams.get("loss_function", "Logloss"),
         "eval_metric": hyperparams.get("eval_metric", "Accuracy"),
         "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
-        "verbose": False,
+        "logging_level": "Silent"
     }
     used_hyperparams = params.copy()
 
@@ -332,13 +347,16 @@ def train_catboost_classifier(x, y, cat_cols, hyperparams):
 
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
-    cv = cross_validate_catboost_classifier(x, y, cat_cols, used_hyperparams)
+    # cross validation
+    cv = cross_validate_catboost(x, y, cat_cols, used_hyperparams, True)
+
     metrics["cv"] = cv
 
     return model, metrics, used_hyperparams
 
 
-def train_catboost_regressor(x, y, categorical_cols, hyperparams):
+def train_catboost_regressor(x, y, cat_cols, hyperparams):
+
     params = {
         "iterations": hyperparams.get("iterations", 500),
         "learning_rate": hyperparams.get("learning_rate", 0.05),
@@ -346,7 +364,7 @@ def train_catboost_regressor(x, y, categorical_cols, hyperparams):
         "loss_function": hyperparams.get("loss_function", "RMSE"),
         "eval_metric": hyperparams.get("eval_metric", "RMSE"),
         "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
-        "verbose": False,
+        "logging_level": "Silent"
     }
     used_hyperparams = params.copy()
 
@@ -362,12 +380,17 @@ def train_catboost_regressor(x, y, categorical_cols, hyperparams):
     model.fit(
         x_train, y_train,
         eval_set=(x_test, y_test),
-        cat_features=categorical_cols,
+        cat_features=cat_cols,
         use_best_model = True
     )
 
     y_pred = model.predict(x_test)
 
     metrics = regressor_evaluation(y_test, y_pred)
+
+    # cross validation
+    cv = cross_validate_catboost(x, y, cat_cols, used_hyperparams, False)
+
+    metrics["cv"] = cv
 
     return model, metrics, used_hyperparams
