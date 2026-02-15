@@ -82,7 +82,7 @@ def validate_features(input_data, expected_data):
                 raise HTTPException(status_code=422, detail=f"Feature '{feature}' must be a string")
 
 
-def verify_file(data, label_column):
+def verify_file(data, label_column, hyperparams=None):
     if not data:
         raise HTTPException(400, "The dataset is empty")
 
@@ -111,10 +111,44 @@ def verify_file(data, label_column):
     if len(df) < 10:
         raise HTTPException(400, "The dataset is too small to train the model")
 
-    return df
+    counts = df[label_column].value_counts(dropna=False)
+    min_count = int(counts.min())
+
+    if min_count < 2:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Not enough samples per class for stratified split/CV. "
+                   f"Smallest class has {min_count} row(s). Need at least 2 per class."
+        )
+
+    dropped_rows = 0
+    if df[label_column].isna().any():
+        n_missing = int(df[label_column].isna().sum())
+
+        drop = False
+        if hyperparams:
+            drop = hyperparams.get("drop_missing_labels", False)
+
+        if drop:
+            dropped_rows = n_missing
+            df = df.dropna(subset=[label_column])
+            if len(df) < 2:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Not enough rows left after dropping missing labels."
+                )
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Label column '{label_column}' contains {n_missing} missing value(s). "
+                       f"Set drop_missing_labels=true in the hyperparams textbox to automatically drop those rows."
+            )
 
 
-def train_model(df, label_column, model_type, hyperparams):
+    return df, dropped_rows
+
+
+def train_model(df, label_column, model_type, hyperparams, dropped_rows = 0):
     if hyperparams is None:
         hyperparams = {}
     y = df[label_column]
@@ -178,7 +212,8 @@ def train_model(df, label_column, model_type, hyperparams):
         "categorical_features": cat_cols,
         "numerical_features": num_cols,
         "metrics": metrics,
-        "hyperparams": used_hyperparams
+        "hyperparams": used_hyperparams,
+        "dropped_rows": dropped_rows
     }
 
     saved_path = save_model(model)

@@ -1,6 +1,7 @@
 from sklearn.model_selection import StratifiedKFold, cross_validate, KFold
 import numpy as np
 from catboost import Pool, cv
+from sklearn.metrics import make_scorer, precision_score, recall_score, f1_score
 
 
 def choose_n_splits(x, y, problem_type):
@@ -35,7 +36,24 @@ def cross_validate_classifier(pipeline, x, y):
 
     splitter = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-    scoring = {'accuracy': 'accuracy', 'f1': 'f1', 'precision': 'precision', 'recall': 'recall'}
+    # scoring = {'accuracy': 'accuracy', 'f1': 'f1', 'precision': 'precision', 'recall': 'recall'}
+    n_classes = int(y.nunique())
+
+    if n_classes == 2:
+        scoring = {
+            "accuracy": "accuracy",
+            "precision": make_scorer(precision_score, average="binary", zero_division=0),
+            "recall": make_scorer(recall_score, average="binary", zero_division=0),
+            "f1": make_scorer(f1_score, average="binary", zero_division=0),
+        }
+
+    else:
+        scoring = {
+            "accuracy": "accuracy",
+            "precision": make_scorer(precision_score, average="weighted", zero_division=0),
+            "recall": make_scorer(recall_score, average="weighted", zero_division=0),
+            "f1": make_scorer(f1_score, average="weighted", zero_division=0),
+        }
 
     results = cross_validate(estimator=pipeline,
                              X=x,

@@ -67,9 +67,6 @@ async def train_csv(file: UploadFile = File(...),
     if not file.filename.endswith(".csv"):
         raise HTTPException(400, "File must be a CSV")
 
-    data = await file.read()
-    df = verify_file(data, label_column)
-
     if hyperparams:
         try:
             hyperparams = json.loads(hyperparams)
@@ -78,7 +75,10 @@ async def train_csv(file: UploadFile = File(...),
     else:
         hyperparams = {}
 
-    model_trained = train_model(df, label_column, model_type, hyperparams)
+    data = await file.read()
+    df, dropped_rows = verify_file(data, label_column, hyperparams)
+
+    model_trained = train_model(df, label_column, model_type, hyperparams, dropped_rows)
     return model_trained
 
 

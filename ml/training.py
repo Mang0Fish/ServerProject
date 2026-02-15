@@ -1,4 +1,4 @@
-from sklearn.datasets import load_digits
+from fastapi import HTTPException
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
@@ -22,10 +22,13 @@ add to classification train_test_split: stratify = y
 """
 
 def classifier_evaluation(y_test, y_pred, y_prob=None):
+    is_binary = len(set(y_test)) == 2
+    avg = "binary" if is_binary else "weighted"
+
     accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, zero_division=0)
-    recall = recall_score(y_test, y_pred, zero_division=0)
-    f1 = f1_score(y_test, y_pred, zero_division=0)
+    precision = precision_score(y_test, y_pred, average=avg, zero_division=0)
+    recall = recall_score(y_test, y_pred, average=avg,zero_division=0)
+    f1 = f1_score(y_test, y_pred, average=avg,zero_division=0)
     cm = confusion_matrix(y_test, y_pred).tolist()
 
     metrics = {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1, "confusion_matrix": cm}
@@ -318,7 +321,24 @@ def train_catboost_classifier(x, y, cat_cols, hyperparams):
         "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
         "logging_level": "Silent"
     }
+    n_classes = int(y.nunique())
+
+    n_classes = int(y.nunique())
+    if n_classes > 2:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"CatBoost binary loss_function='{params.get('loss_function')}' can't train multiclass targets "
+                f"({n_classes} classes). Set hyperparams.loss_function='MultiClass' "
+                f"(and choose an appropriate eval_metric, e.g. 'Accuracy')."
+            )
+        )
+
     used_hyperparams = params.copy()
+
+    if cat_cols:
+        x = x.copy()
+        x[cat_cols] = x[cat_cols].fillna("__MISSING__").astype(str)
 
     model = CatBoostClassifier(**params)
 
@@ -356,7 +376,6 @@ def train_catboost_classifier(x, y, cat_cols, hyperparams):
 
 
 def train_catboost_regressor(x, y, cat_cols, hyperparams):
-
     params = {
         "iterations": hyperparams.get("iterations", 500),
         "learning_rate": hyperparams.get("learning_rate", 0.05),
@@ -367,6 +386,10 @@ def train_catboost_regressor(x, y, cat_cols, hyperparams):
         "logging_level": "Silent"
     }
     used_hyperparams = params.copy()
+
+    if cat_cols:
+        x = x.copy()
+        x[cat_cols] = x[cat_cols].fillna("__MISSING__").astype(str)
 
     model = CatBoostRegressor(**params)
 
