@@ -96,11 +96,14 @@ def verify_file(data, label_column, hyperparams=None):
     if df.empty:
         raise HTTPException(400, "The dataset is empty")
 
-    if label_column not in df.columns:
+
+    columns_lower = {col.lower(): col for col in df.columns}
+    if label_column.lower() not in columns_lower:
         raise HTTPException(
             status_code=400,
             detail=f"Label column '{label_column}' does not exist"
         )
+    label_column = columns_lower[label_column.lower()]
 
     if len(df.columns) < 2:
         raise HTTPException(400, "The dataset must contain at least 2 columns")
@@ -145,7 +148,7 @@ def verify_file(data, label_column, hyperparams=None):
             )
 
 
-    return df, dropped_rows
+    return df, dropped_rows, label_column
 
 
 def train_model(df, label_column, model_type, hyperparams, dropped_rows = 0):

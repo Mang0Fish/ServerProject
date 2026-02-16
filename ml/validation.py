@@ -128,26 +128,51 @@ def cross_validate_regressor(pipeline, x, y):
 
 def cross_validate_catboost(x, y, cat_cols, params, cv_type):
     """
-    CatBoost built-in cross validation. Uses the hyperparams the user chose.
-    Returns the final iteration's test metric mean/std (and best iteration if available).
-    cv_type: If true is classification, else regression
+    CatBoost built-in cross validation.
+    cv_type: True is classification (stratified), False is regression
+    Speed policy:
+        skip CV if < 200 rows
+        cap folds to 3
+        cap iterations to 100 (CV only)
+        early stopping 20 (CV only)
     """
+
+    # Skip CV for small datasets
+    n_rows = len(x)
+    if n_rows < 200:
+        return None
+
     n_splits = choose_n_splits(x, y, cv_type)
     if n_splits is None:
         return None
+
+    # Speed caps
+    n_splits = min(n_splits, 3)
+
+    # Use a CV-only params copy (do NOT mutate training params)
+    cv_params = params.copy()
+    cv_params["iterations"] = min(cv_params.get("iterations", 500), 100)
+    cv_params["early_stopping_rounds"] = 20
+
+    # Avoid CatBoost logging conflicts
+    cv_params.pop("verbose", None)
+    cv_params.pop("silent", None)
+    cv_params.pop("verbose_eval", None)
+
+    cv_params["logging_level"] = "Silent"
 
     pool = Pool(data=x, label=y, cat_features=cat_cols)
 
     cv_results = cv(
         pool=pool,
-        params=params,
+        params=cv_params,
         fold_count=n_splits,
         shuffle=True,
         partition_random_seed=42,
         stratified=cv_type,
-        verbose=False)
+    )
 
-    metric = params["eval_metric"]
+    metric = cv_params.get("eval_metric", params.get("eval_metric"))
     mean_col = f"test-{metric}-mean"
     std_col = f"test-{metric}-std"
 
@@ -160,7 +185,14 @@ def cross_validate_catboost(x, y, cat_cols, params, cv_type):
         "n_splits": n_splits,
         "shuffle": True,
         "random_state": 42,
-        "loss_function": params["loss_function"],
+        "loss_function": cv_params.get("loss_function"),
         "eval_metric": metric,
-        "score": {"mean": score_mean, "std":score_std}
+        "score": {"mean": score_mean, "std": score_std},
+        "cv_speed_policy": {
+            "min_rows": 200,
+            "max_folds": 3,
+            "max_iterations": 100,
+            "early_stopping_rounds": 20,
+        },
     }
+

@@ -76,7 +76,7 @@ async def train_csv(file: UploadFile = File(...),
         hyperparams = {}
 
     data = await file.read()
-    df, dropped_rows = verify_file(data, label_column, hyperparams)
+    df, dropped_rows, label_column = verify_file(data, label_column, hyperparams)
 
     model_trained = train_model(df, label_column, model_type, hyperparams, dropped_rows)
     return model_trained

@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import (accuracy_score, r2_score, precision_score, recall_score, f1_score,
                              mean_absolute_error, mean_squared_error, root_mean_squared_error,
                              confusion_matrix, roc_auc_score, roc_curve)
-from sklearn.svm import SVC, SVR
+from sklearn.svm import SVC, SVR, LinearSVC
 from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
 from ml.preprocessing import build_preprocessor
