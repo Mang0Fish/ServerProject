@@ -36,7 +36,7 @@ def save_metadata(model_path, metadata):
 
     try:
         with open(meta_path, "w") as f:
-            json.dump(metadata, f)
+            json.dump(metadata, f, default=str)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save metadata: {str(e)}")
 

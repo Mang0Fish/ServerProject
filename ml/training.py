@@ -10,6 +10,8 @@ from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.pipeline import Pipeline
 from ml.preprocessing import build_preprocessor
 from ml.validation import cross_validate_classifier, cross_validate_catboost, cross_validate_regressor
+from sklearn.calibration import CalibratedClassifierCV
+import numpy as np
 
 """
 accuracy score, F1, precision, recall = classification
@@ -20,6 +22,81 @@ add to classification train_test_split: stratify = y
 ...
 
 """
+import numpy as np  # add at top if not present
+
+def tune_threshold_binary_f1(y_true, y_prob, positive_label=None, steps=201):
+    """
+    Binary-only threshold tuning on a validation split.
+    Returns best threshold by F1 + metrics at best vs default(0.5).
+
+    y_true can be strings or numbers.
+    y_prob is probability of the positive class (shape: [n_samples]).
+    """
+
+    if y_prob is None:
+        return None
+
+    labels = list(np.unique(y_true))
+    if len(labels) != 2:
+        return None
+
+    # Pick a stable positive label if user didn't specify
+    if positive_label is None:
+        labels_sorted = sorted(labels, key=lambda v: str(v))
+        positive_label = labels_sorted[1]  # treat "second" as positive
+
+    y_true_bin = (np.array(y_true) == positive_label).astype(int)
+
+    # Guard against degenerate cases
+    if len(np.unique(y_true_bin)) != 2:
+        return None
+
+    def eval_at(th):
+        pred = (np.array(y_prob) >= th).astype(int)
+        p = precision_score(y_true_bin, pred, zero_division=0)
+        r = recall_score(y_true_bin, pred, zero_division=0)
+        f = f1_score(y_true_bin, pred, zero_division=0)
+        cm = confusion_matrix(y_true_bin, pred)
+        cm = [[int(v) for v in row] for row in cm.tolist()]
+        return float(p), float(r), float(f), cm
+
+    # default 0.5
+    p05, r05, f05, cm05 = eval_at(0.5)
+
+    best_t = 0.5
+    best_f = -1.0
+    best_pack = (p05, r05, f05, cm05)
+
+    for th in np.linspace(0.0, 1.0, steps):
+        p, r, f, cm = eval_at(float(th))
+        if f > best_f:
+            best_f = f
+            best_t = float(th)
+            best_pack = (p, r, f, cm)
+
+    bp, br, bf, bcm = best_pack
+    positive_label = str(positive_label)
+    return {
+        "positive_label": positive_label,
+        "best_threshold": best_t,
+        "metrics_at_best_threshold": {
+            "precision": bp,
+            "recall": br,
+            "f1": bf,
+            "confusion_matrix": bcm,
+        },
+        "default_threshold": 0.5,
+        "metrics_at_default_0_5": {
+            "precision": p05,
+            "recall": r05,
+            "f1": f05,
+            "confusion_matrix": cm05,
+        },
+        "scan": {
+            "steps": steps
+        }
+    }
+
 
 def classifier_evaluation(y_test, y_pred, y_prob=None):
     is_binary = len(set(y_test)) == 2
@@ -133,6 +210,17 @@ def train_logistic_reg(x, y, hyperparams, cat_cols, num_cols):
 
     metrics["cv"] = cv
 
+    if y_prob is not None and len(set(y_test)) == 2:
+        pos_label = hyperparams.get("positive_label", None)
+        steps = hyperparams.get("threshold_steps", 201)
+
+        metrics["threshold_tuning"] = tune_threshold_binary_f1(
+            y_true=y_test,
+            y_prob=y_prob,
+            positive_label=pos_label,
+            steps=steps
+        )
+
     return pipeline, metrics, used_hyperparams
 
 
@@ -182,6 +270,17 @@ def train_random_forest_classifier(x, y, hyperparams, cat_cols, num_cols):
 
     metrics["cv"] = cv
 
+    if y_prob is not None and len(set(y_test)) == 2:
+        pos_label = hyperparams.get("positive_label", None)
+        steps = hyperparams.get("threshold_steps", 201)
+
+        metrics["threshold_tuning"] = tune_threshold_binary_f1(
+            y_true=y_test,
+            y_prob=y_prob,
+            positive_label=pos_label,
+            steps=steps
+        )
+
     return pipeline, metrics, used_hyperparams
 
 
@@ -228,16 +327,68 @@ def train_random_forest_regressor(x, y, hyperparams, cat_cols, num_cols):
 
 
 def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
+    # Large dataset uses linear SVM (faster)
+    use_linear = len(x) >= hyperparams.get("linear_threshold", 10000)
+
+    preprocessor = build_preprocessor(cat_cols, num_cols, True)
+
+    if use_linear:
+        params = {
+            "C": hyperparams.get("C", 1.0),
+            "max_iter": hyperparams.get("max_iter", 5000),
+        }
+        used_hyperparams = params.copy()
+        used_hyperparams["svm_variant"] = "LinearSVC"
+
+        base = LinearSVC(**params)
+        #Ables the use of ROC/AUC, as LinearSVC has no predict_proba
+        calibrated = CalibratedClassifierCV(base, method="sigmoid", cv=3)
+
+        pipeline = Pipeline([
+            ("preprocessor", preprocessor),
+            ("model", calibrated)
+        ])
+
+        x_train, x_test, y_train, y_test = train_test_split(
+            x, y, test_size=0.2, random_state=42, stratify=y
+        )
+
+        pipeline.fit(x_train, y_train)
+
+        y_pred = pipeline.predict(x_test)
+
+        y_prob = None
+        if len(set(y_test)) == 2:
+            probs = pipeline.predict_proba(x_test)
+            if probs is not None and probs.shape[1] == 2:
+                y_prob = probs[:, 1]
+
+        metrics = classifier_evaluation(y_test, y_pred, y_prob)
+
+        if y_prob is not None and len(set(y_test)) == 2:
+            pos_label = hyperparams.get("positive_label", None)
+            steps = hyperparams.get("threshold_steps", 201)
+
+            metrics["threshold_tuning"] = tune_threshold_binary_f1(
+                y_true=y_test,
+                y_prob=y_prob,
+                positive_label=pos_label,
+                steps=steps
+            )
+
+
+        return pipeline, metrics, used_hyperparams
+
+    # Small dataset keeps the kernel=SVC
     params = {
         "C": hyperparams.get("C", 1.0),
         "kernel": hyperparams.get("kernel", "rbf"),
         "gamma": hyperparams.get("gamma", "scale"),
         "degree": hyperparams.get("degree", 3),
-        "probability": True,
+        "probability": hyperparams.get("probability", True),
     }
     used_hyperparams = params.copy()
-
-    preprocessor = build_preprocessor(cat_cols, num_cols, True)
+    used_hyperparams["svm_variant"] = "SVC"
 
     pipeline = Pipeline([
         ("preprocessor", preprocessor),
@@ -245,33 +396,34 @@ def train_svm_classifier(x, y, hyperparams, cat_cols, num_cols):
     ])
 
     x_train, x_test, y_train, y_test = train_test_split(
-        x,
-        y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y
+        x, y, test_size=0.2, random_state=42, stratify=y
     )
-
 
     pipeline.fit(x_train, y_train)
 
     y_pred = pipeline.predict(x_test)
-    # In case somehow probability = False
 
     y_prob = None
-    if len(set(y_test)) == 2:
+    if params.get("probability", False) and len(set(y_test)) == 2:
         probs = pipeline.predict_proba(x_test)
         if probs is not None and probs.shape[1] == 2:
             y_prob = probs[:, 1]
 
     metrics = classifier_evaluation(y_test, y_pred, y_prob)
 
-    # cross validation
-    cv = cross_validate_classifier(pipeline, x, y)
+    if y_prob is not None and len(set(y_test)) == 2:
+        pos_label = hyperparams.get("positive_label", None)
+        steps = hyperparams.get("threshold_steps", 201)
 
-    metrics["cv"] = cv
+        metrics["threshold_tuning"] = tune_threshold_binary_f1(
+            y_true=y_test,
+            y_prob=y_prob,
+            positive_label=pos_label,
+            steps=steps
+        )
 
     return pipeline, metrics, used_hyperparams
+
 
 
 def train_svm_regressor(x, y, hyperparams, cat_cols, num_cols):
@@ -321,7 +473,7 @@ def train_catboost_classifier(x, y, cat_cols, hyperparams):
         "early_stopping_rounds": hyperparams.get("early_stopping_rounds", None),
         "logging_level": "Silent"
     }
-    n_classes = int(y.nunique())
+
 
     n_classes = int(y.nunique())
     if n_classes > 2:
@@ -371,6 +523,16 @@ def train_catboost_classifier(x, y, cat_cols, hyperparams):
     cv = cross_validate_catboost(x, y, cat_cols, used_hyperparams, True)
 
     metrics["cv"] = cv
+    if y_prob is not None and len(set(y_test)) == 2:
+        pos_label = hyperparams.get("positive_label", None)
+        steps = hyperparams.get("threshold_steps", 201)
+
+        metrics["threshold_tuning"] = tune_threshold_binary_f1(
+            y_true=y_test,
+            y_prob=y_prob,
+            positive_label=pos_label,
+            steps=steps
+        )
 
     return model, metrics, used_hyperparams
 
