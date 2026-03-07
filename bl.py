@@ -32,3 +32,7 @@ def add_tokens(username: str, amount: int):
 
 def verify_user(username: str, password: str):
     return dal.verify_user(username, password)
+
+
+def spend_tokens(username: str, amount: int):
+    return dal.spend_tokens(username, amount)

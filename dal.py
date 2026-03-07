@@ -161,3 +161,17 @@ def verify_user(username: str, password: str):
     if not verify_password(password, user.password, user.salt):
         return None
     return {'username': user.username, 'tokens': user.tokens, 'role': user.role}
+
+
+def spend_tokens(username, amount):
+    with get_conn() as conn, conn.cursor() as cursor:
+        cursor.execute("""
+            UPDATE users
+            SET tokens = tokens - %s
+            WHERE username = %s AND tokens >= %s
+            RETURNING tokens
+        """, (amount, username, amount))
+
+        row = cursor.fetchone()
+        conn.commit()
+        return row[0] if row else None

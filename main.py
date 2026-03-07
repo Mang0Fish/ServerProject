@@ -11,7 +11,7 @@ from security import create_access_token, create_refresh_token
 from routers.token import generate_tokens_for_user
 import pandas as pd
 from io import StringIO
-from ml.utils import load_model, verify_file, train_model, ModelEnum, load_metadata, validate_features
+from ml.utils import load_model, verify_file, train_model, ModelEnum, load_metadata, validate_features, list_models
 from typing import Optional, Dict, Any
 import json
 
@@ -60,7 +60,8 @@ def root(username: str, password: str):
 async def train_csv(file: UploadFile = File(...),
                     label_column: str = Form(...),
                     model_type: ModelEnum = Query(..., description="Select the model"),
-                    hyperparams: Optional[str] = Form(None)
+                    hyperparams: Optional[str] = Form(None),
+                    current=Depends(get_current_user)
                     ):
 
     # Step 1: read csv file into a DataFrame
@@ -78,12 +79,22 @@ async def train_csv(file: UploadFile = File(...),
     data = await file.read()
     df, dropped_rows, label_column = verify_file(data, label_column, hyperparams)
 
+    balance = bl.spend_tokens(current["username"], 1)
+    if balance is None:
+        raise HTTPException(status_code=402, detail="Not enough tokens for training")
+
     model_trained = train_model(df, label_column, model_type, hyperparams, dropped_rows)
     return model_trained
 
 
 @app.post("/ml/predict")
-def predict(request: PredictRequest):
+def predict(request: PredictRequest,
+            current=Depends(get_current_user)):
+
+    balance = bl.spend_tokens(current["username"], 5)
+    if balance is None:
+        raise HTTPException(status_code=402, detail="Not enough tokens for prediction")
+
     metadata = load_metadata(request.model_path)
 
     validate_features(
@@ -119,6 +130,11 @@ def predict(request: PredictRequest):
     return response
 
 
+@app.get("/models")
+def get_models():
+    return list_models()
+
+
 @app.post("/users/")
 def create_item(user: UserCreate):
     try:
@@ -133,11 +149,15 @@ def create_item(user: UserCreate):
 
 @app.get("/admin/users/", response_model=list[UserOut])
 def get_all(current=Depends(get_current_user)):
+    if current.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
     return bl.get_users()
 
 
 @app.get("/admin/users/{username}", response_model=UserOut)
 def read_user(username: str, current=Depends(get_current_user)):
+    if current.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
     user = bl.get_user_by_username(username)
     if not user:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")

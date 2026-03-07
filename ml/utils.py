@@ -57,6 +57,38 @@ def load_model(path):
     return joblib.load(path)
 
 
+def list_models():
+    folder = "ml_models"
+
+    if not os.path.exists(folder):
+        return []
+
+    models = []
+
+    for filename in os.listdir(folder):
+        if not filename.endswith(".meta.json"):
+            continue
+
+        path = os.path.join(folder, filename)
+
+        try:
+            with open(path) as f:
+                meta = json.load(f)
+
+            models.append({
+                "model_path": path.replace(".meta.json", ".pkl"),
+                "model_type": meta.get("model_type"),
+                "problem_type": meta.get("problem_type"),
+                "label": meta.get("label_column"),
+                "features": meta.get("features"),
+                "date": meta.get("trained_at")
+            })
+        except Exception:
+            continue
+
+    return models
+
+
 def validate_features(input_data, expected_data):
     input_features = set(input_data.keys())
     expected_features = set(expected_data.keys())
@@ -216,7 +248,8 @@ def train_model(df, label_column, model_type, hyperparams, dropped_rows = 0):
         "numerical_features": num_cols,
         "metrics": metrics,
         "hyperparams": used_hyperparams,
-        "dropped_rows": dropped_rows
+        "dropped_rows": dropped_rows,
+        "trained_at": datetime.now().isoformat(),
     }
 
     saved_path = save_model(model)
@@ -232,4 +265,5 @@ def train_model(df, label_column, model_type, hyperparams, dropped_rows = 0):
         "score": metrics,
         "model": saved_path
     }
+
 
