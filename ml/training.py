@@ -113,6 +113,14 @@ def classifier_evaluation(y_test, y_pred, y_prob=None):
     if y_prob is not None and len(set(y_test)) == 2:
         metrics["roc_auc"] = roc_auc_score(y_test, y_prob)
         fpr, tpr, _ = roc_curve(y_test, y_prob)
+
+        max_points = 20  #
+
+        if len(fpr) > max_points:
+            indices = np.linspace(0, len(fpr) - 1, max_points).astype(int)
+            fpr = fpr[indices]
+            tpr = tpr[indices]
+
         metrics["roc_curve"] = {
             "fpr": fpr.tolist(),
             "tpr": tpr.tolist(),
