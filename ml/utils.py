@@ -75,8 +75,12 @@ def list_models():
             with open(path) as f:
                 meta = json.load(f)
 
+            model_path = path.replace(".meta.json", ".pkl")
+            model_name = os.path.splitext(os.path.basename(model_path))[0]
+
             models.append({
-                "model_path": path.replace(".meta.json", ".pkl"),
+                "model_name": model_name,
+                "model_path": model_path,
                 "model_type": meta.get("model_type"),
                 "problem_type": meta.get("problem_type"),
                 "label": meta.get("label_column"),

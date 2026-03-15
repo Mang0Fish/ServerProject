@@ -14,6 +14,7 @@ from io import StringIO
 from ml.utils import load_model, verify_file, train_model, ModelEnum, load_metadata, validate_features, list_models
 from typing import Optional, Dict, Any
 import json
+import logging
 
 
 """
@@ -39,6 +40,10 @@ git checkout -b feat/auth-jwt
 
 load_dotenv()
 
+logging.basicConfig(filename="server.log",
+                    level=logging.INFO,
+                    format="%(asctime)s | %(levelname)s | %(message)s")
+
 # SECRET_KEY = os.getenv("SECRET_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -55,8 +60,7 @@ def root(username: str, password: str):
 """
 
 
-# Add user log in requirement !!!
-@app.post("/ml/train-csv")
+@app.post("/train")
 async def train_csv(file: UploadFile = File(...),
                     label_column: str = Form(...),
                     model_type: ModelEnum = Query(..., description="Select the model"),
@@ -81,37 +85,40 @@ async def train_csv(file: UploadFile = File(...),
 
     balance = bl.spend_tokens(current["username"], 1)
     if balance is None:
+        logging.warning(f"User {current['username']} tried training without enough tokens")
         raise HTTPException(status_code=402, detail="Not enough tokens for training")
 
     model_trained = train_model(df, label_column, model_type, hyperparams, dropped_rows)
+    logging.info(f"User {current['username']} trained model {model_type} with label {label_column}")
     return model_trained
 
 
-@app.post("/ml/predict")
-def predict(request: PredictRequest,
-            current=Depends(get_current_user)):
+@app.post("/predict/{model_name}")
+def predict(model_name: str, input_data: Dict[str, Any] = Body(...), current=Depends(get_current_user)):
+    model_path = f"ml_models/{model_name}.pkl"
 
     balance = bl.spend_tokens(current["username"], 5)
     if balance is None:
+        logging.warning(f"User {current['username']} tried predicting without enough tokens")
         raise HTTPException(status_code=402, detail="Not enough tokens for prediction")
 
-    metadata = load_metadata(request.model_path)
+    metadata = load_metadata(model_path)
 
     validate_features(
-        input_data=request.input,
+        input_data=input_data,
         expected_data=metadata["feature_types"]
     )
 
 
     # model/pipeline loading
     try:
-        model = load_model(request.model_path)
+        model = load_model(model_path)
     except Exception:
         raise HTTPException(status_code=400, detail="Could not load model")
 
     # converting input to df
     try:
-        df = pd.DataFrame([request.input])
+        df = pd.DataFrame([input_data])
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid input format")
 
@@ -127,6 +134,7 @@ def predict(request: PredictRequest,
         probs = model.predict_proba(df)
         response["probabilities"] = probs[0].tolist()
 
+    logging.info(f"User {current['username']} made prediction using model {model_name}")
     return response
 
 
@@ -135,14 +143,17 @@ def get_models():
     return list_models()
 
 
-@app.post("/users/")
+@app.post("/signup/")
 def create_item(user: UserCreate):
     try:
         bl.insert_user(user)
     except psycopg2.errors.UniqueViolation:  # username already exists
+        logging.warning(f"Registration failed: user {user.username} already exists")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"User '{user.username}' already exists")
+
+    logging.info(f"User {user.username} registered")
     return "message: user added! "
     # return generate_tokens_for_user(user.username, user.password)
 
@@ -164,36 +175,29 @@ def read_user(username: str, current=Depends(get_current_user)):
     return user
 
 
-"""
-@app.put("/users/{username}")  # updates password with no hashing (just delete this later)
-def update_item(username: str, user: User):
-    if username != user.username:
-        raise HTTPException(status_code=400, detail="Username in path and body must match")
-    found = bl.update_user(username, user)
-    if not found:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"message": "User updated"}
-"""
-# possible password update
-
-
-@app.delete("/admin/user/{username}")
+@app.delete("/admin/remove_user/{username}")
 def read_root(username: str, current=Depends(get_current_user)):
     if current.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     user = bl.delete_user(username)
     if not user:
+        logging.warning(f"Admin {current['username']} tried deleting missing user {username}")
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    logging.info(f"Admin {current['username']} deleted user {username}")
     return {"message": "User successfully deleted"}
 
 
-@app.delete("/user_password/{username}")  # Not safe but a project requirement
-def read_item(username: str, password: str):
-    user = bl.verify_user(username, password)
-    if not user:
-        raise HTTPException(status_code=401, detail=f"Wrong Password or Username")
-    bl.delete_user(username)
-    return {"message": f"User {username} successfully deleted"}
+@app.delete("/remove_user")
+def remove_user(user: UserCreate):
+    verified = bl.verify_user(user.username, user.password)
+    if not verified:
+        raise HTTPException(
+            status_code=401,
+            detail="Wrong username or password"
+        )
+    bl.delete_user(user.username)
+    logging.info(f"User {user.username} deleted")
+    return {"message": f"User {user.username} successfully deleted"}
 
 
 @app.get("/tokens/")
@@ -208,12 +212,14 @@ def read_item(current=Depends(get_current_user)):
 def create_item(payment: Payment, current=Depends(get_current_user)):
     balance = bl.add_tokens(current["username"], payment.amount)
     if not balance:
+        logging.warning(f"Token add failed: user {current['username']} not found")
         raise HTTPException(status_code=404, detail=f"User '{current["username"]}' not found")
+    logging.info(f"User {current['username']} added {payment.amount} tokens")
     return {f"User": current["username"], "New balance": balance}
 
-
+"""
 @app.get("/protected/me")
 def protected_example(current=Depends(get_current_user)):
     return {"hello": current["username"], "role": current["role"]}
-
+"""
 
