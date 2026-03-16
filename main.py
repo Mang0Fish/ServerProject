@@ -62,17 +62,29 @@ def root(username: str, password: str):
 
 @app.post("/train")
 async def train_csv(file: UploadFile = File(...),
-                    label_column: str = Form(...),
+                    label_column: str = Form(
+                        ...,
+                        example="quality"
+                    ),
                     model_type: ModelEnum = Query(..., description="Select the model"),
-                    hyperparams: Optional[str] = Form(None),
+                    features: str = Form(
+                        "",
+                        description="Comma-separated feature column names. Leave empty to use all features automatically. Example: alcohol,pH,density"
+                    ),
+                    hyperparams: str = Form(
+                        "",
+                        description="JSON object with model hyperparameters",
+                        example='{"n_estimators":100,"max_depth":5}'
+                    ),
                     current=Depends(get_current_user)
                     ):
 
-    # Step 1: read csv file into a DataFrame
+    # read csv file into a DataFrame
     if not file.filename.endswith(".csv"):
         raise HTTPException(400, "File must be a CSV")
 
-    if hyperparams:
+    # Feature parsing
+    if hyperparams and hyperparams.strip():
         try:
             hyperparams = json.loads(hyperparams)
         except json.JSONDecodeError:
@@ -80,27 +92,64 @@ async def train_csv(file: UploadFile = File(...),
     else:
         hyperparams = {}
 
+    # feature parsing
+    if features and features.strip():
+        features = [col.strip() for col in features.split(",") if col.strip()]
+    else:
+        features = None
+
     data = await file.read()
     df, dropped_rows, label_column = verify_file(data, label_column, hyperparams)
+
+    if features is not None:
+        if len(features) == 0:
+            raise HTTPException(status_code=400, detail="At least one feature must be provided")
+
+        missing_features = [col for col in features if col not in df.columns]
+        if missing_features:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Feature column(s) do not exist: {missing_features}"
+            )
+
+        if label_column in features:
+            raise HTTPException(
+                status_code=400,
+                detail="Label column cannot also be included in features"
+            )
+
+        df = df[features + [label_column]]
+
+    else:
+        features = [col for col in df.columns if col != label_column]
+
+    model_trained = train_model(df, label_column, model_type, hyperparams, dropped_rows)
 
     balance = bl.spend_tokens(current["username"], 1)
     if balance is None:
         logging.warning(f"User {current['username']} tried training without enough tokens")
         raise HTTPException(status_code=402, detail="Not enough tokens for training")
 
-    model_trained = train_model(df, label_column, model_type, hyperparams, dropped_rows)
     logging.info(f"User {current['username']} trained model {model_type} with label {label_column}")
+
     return model_trained
 
 
 @app.post("/predict/{model_name}")
-def predict(model_name: str, input_data: Dict[str, Any] = Body(...), current=Depends(get_current_user)):
+def predict(model_name: str, input_data: Dict[str, Any] = Body(
+    ...,
+    openapi_examples={
+        "wine_example": {
+            "summary": "Wine prediction example",
+            "value": {
+                "alcohol": 10.5,
+                "pH": 3.2,
+                "density": 0.997
+            }
+        }
+    }
+), current=Depends(get_current_user)):
     model_path = f"ml_models/{model_name}.pkl"
-
-    balance = bl.spend_tokens(current["username"], 5)
-    if balance is None:
-        logging.warning(f"User {current['username']} tried predicting without enough tokens")
-        raise HTTPException(status_code=402, detail="Not enough tokens for prediction")
 
     metadata = load_metadata(model_path)
 
@@ -109,6 +158,10 @@ def predict(model_name: str, input_data: Dict[str, Any] = Body(...), current=Dep
         expected_data=metadata["feature_types"]
     )
 
+    balance = bl.spend_tokens(current["username"], 5)
+    if balance is None:
+        logging.warning(f"User {current['username']} tried predicting without enough tokens")
+        raise HTTPException(status_code=402, detail="Not enough tokens for prediction")
 
     # model/pipeline loading
     try:
@@ -128,11 +181,16 @@ def predict(model_name: str, input_data: Dict[str, Any] = Body(...), current=Dep
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
 
-    response = {"prediction": prediction[0].item()} # fixed the iterable error
+    pred_value = prediction[0]
+
+    if hasattr(pred_value, "item"):
+        pred_value = pred_value.item()
+
+    response = {"prediction": pred_value}
 
     if hasattr(model, "predict_proba"):
         probs = model.predict_proba(df)
-        response["probabilities"] = probs[0].tolist()
+        response["probabilities"] = [float(x) for x in probs[0].tolist()]
 
     logging.info(f"User {current['username']} made prediction using model {model_name}")
     return response

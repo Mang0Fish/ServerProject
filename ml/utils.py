@@ -258,7 +258,7 @@ def train_model(df, label_column, model_type, hyperparams, dropped_rows = 0):
 
     saved_path = save_model(model)
     save_metadata(saved_path, metadata)
-
+    model_name = os.path.splitext(os.path.basename(saved_path))[0]
     return {
         "msg": "Training completed",
         "rows": len(df),
@@ -267,7 +267,8 @@ def train_model(df, label_column, model_type, hyperparams, dropped_rows = 0):
         "features": x.columns.tolist(),
         "label": label_column,
         "score": metrics,
-        "model": saved_path
+        "model_name": model_name,
+        "model_path": saved_path
     }
 
 
