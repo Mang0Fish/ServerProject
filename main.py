@@ -48,7 +48,7 @@ logging.basicConfig(filename="server.log",
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI(title="EZPredict", description="Learn and predict using various models", version='1.0')
-app.include_router(token_router, prefix="/auth", tags=["auth"])
+app.include_router(token_router, prefix="/auth", tags=["auth"], include_in_schema=False)
 
 """
 @app.get("/funcCheckingg")
@@ -158,11 +158,6 @@ def predict(model_name: str, input_data: Dict[str, Any] = Body(
         expected_data=metadata["feature_types"]
     )
 
-    balance = bl.spend_tokens(current["username"], 5)
-    if balance is None:
-        logging.warning(f"User {current['username']} tried predicting without enough tokens")
-        raise HTTPException(status_code=402, detail="Not enough tokens for prediction")
-
     # model/pipeline loading
     try:
         model = load_model(model_path)
@@ -193,6 +188,11 @@ def predict(model_name: str, input_data: Dict[str, Any] = Body(
         response["probabilities"] = [float(x) for x in probs[0].tolist()]
 
     logging.info(f"User {current['username']} made prediction using model {model_name}")
+
+    balance = bl.spend_tokens(current["username"], 5)
+    if balance is None:
+        logging.warning(f"User {current['username']} tried predicting without enough tokens")
+        raise HTTPException(status_code=402, detail="Not enough tokens for prediction")
     return response
 
 
