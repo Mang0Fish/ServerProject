@@ -12,3 +12,10 @@
 2026-03-16 16:22:12,762 | INFO | User ozalkobi made prediction using model model_20260316_162120
 2026-03-16 16:48:10,779 | INFO | User ozalkobi trained model ModelEnum.randomforest with label quality
 2026-03-16 16:49:17,665 | INFO | User ozalkobi made prediction using model model_20260316_164810
+2026-05-04 12:10:35,300 | INFO | User checkingLogger registered
+2026-05-04 12:11:57,630 | INFO | User adminuser added 5 tokens
+2026-05-04 12:15:06,091 | INFO | User adminuser trained model ModelEnum.catboost with label Survived
+2026-05-04 12:15:22,456 | INFO | User adminuser trained model ModelEnum.randomforest with label Survived
+2026-05-04 12:15:28,225 | INFO | User adminuser trained model ModelEnum.svm with label Survived
+2026-05-04 12:15:35,764 | INFO | User adminuser trained model ModelEnum.linearregression with label Survived
+2026-05-04 12:15:42,103 | INFO | User adminuser trained model ModelEnum.logisticregression with label Survived

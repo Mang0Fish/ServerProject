@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:17
+    container_name: ezpredict_db
+    environment:
+      POSTGRES_DB: ServerUsers
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ServerUsers"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: ezpredict_api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml_models:/app/ml_models
+      - ./server.log:/app/server.log
+
+volumes:
+  postgres_data:
